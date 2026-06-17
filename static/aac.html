@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SilentVoice — AAC Communication Board</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+/* ─────────────────────────── RESET + TOKENS ─────────────────────────── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #f7f4ef;
+  --surface: #ffffff;
+  --surface2: #f0ede8;
+  --ink: #1a1714;
+  --ink2: #4a443d;
+  --ink3: #8a8078;
+  --ink4: #b8b0a8;
+  --border: #e4dfd8;
+  --border2: #cfc8bf;
+
+  --accent: #c9410c;
+  --accent-bg: #fdf2ee;
+  --accent-border: #f0c4b2;
+
+  --safe: #2d6a4f;
+  --safe-bg: #eef6f1;
+  --safe-border: #b0d9c0;
+
+  --blue: #2c5f8a;
+  --blue-bg: #eef4f9;
+  --blue-border: #b0cfe8;
+
+  --gold: #b8860b;
+  --gold-bg: #fdf8ee;
+
+  /* Category colors (muted, warm-toned for light theme) */
+  --cat-greetings: #2c5f8a;
+  --cat-needs: #c9410c;
+  --cat-emergency: #991b1b;
+  --cat-medical: #2d6a4f;
+  --cat-social: #6b3fa0;
+  --cat-feelings: #b8860b;
+
+  --shadow-sm: 0 1px 4px rgba(26,23,20,.06), 0 1px 2px rgba(26,23,20,.04);
+  --shadow: 0 4px 20px rgba(26,23,20,.08), 0 1px 6px rgba(26,23,20,.05);
+  --shadow-lg: 0 12px 40px rgba(26,23,20,.12), 0 4px 12px rgba(26,23,20,.06);
+
+  --r: 14px;
+  --r-sm: 8px;
+  --r-lg: 20px;
+}
+
+html, body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.55;
+  font-size: 15px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─────────────────────────── HEADER ─────────────────────────── */
+.site-header {
+  background: var(--ink);
+  padding: 0 40px;
+  flex-shrink: 0;
+}
+.header-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 0;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.logo-mark {
+  width: 38px;
+  height: 38px;
+  background: var(--accent);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 18px;
+}
+.logo-name {
+  font-family: 'DM Serif Display', serif;
+  font-size: 20px;
+  color: #fff;
+  line-height: 1;
+}
+.logo-name span {
+  display: block;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.45);
+  margin-top: 3px;
+}
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Language selector */
+.lang-selector-wrap {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: var(--r-sm);
+  padding: 3px 5px;
+}
+.lang-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,.45);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.18s;
+  white-space: nowrap;
+}
+.lang-btn:hover { background: rgba(255,255,255,.08); color: rgba(255,255,255,.75); }
+.lang-btn.active { background: rgba(255,255,255,.12); color: #fff; font-weight: 600; }
+.lang-divider { width: 1px; height: 14px; background: rgba(255,255,255,.1); flex-shrink: 0; }
+
+/* Rate control */
+.rate-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(255,255,255,.45);
+}
+.rate-control input[type=range] {
+  -webkit-appearance: none;
+  width: 72px; height: 3px;
+  background: rgba(255,255,255,.15);
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+}
+.rate-control input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 13px; height: 13px;
+  background: #fff;
+  border-radius: 50%;
+}
+#rateVal { color: rgba(255,255,255,.65); font-weight: 500; min-width: 28px; }
+
+/* Voice selector */
+.voice-selector {
+  background: #2a2520;
+  border: 1px solid rgba(255,255,255,.12);
+  color: rgba(255,255,255,.7);
+  padding: 6px 12px;
+  border-radius: var(--r-sm);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+  max-width: 190px;
+}
+.voice-selector option {
+  background: #2a2520;
+  color: rgba(255,255,255,.85);
+}
+
+/* Status badge */
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: rgba(255,255,255,.45);
+  padding: 5px 11px;
+  background: rgba(255,255,255,.06);
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,.1);
+}
+.status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #4ade80;
+}
+.status-dot.speaking-dot {
+  background: var(--accent);
+  animation: pulse-dot 1s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.7); }
+}
+
+/* TTS warnings */
+.tts-warn {
+  display: none;
+  font-size: 11px;
+  color: var(--gold);
+  background: var(--gold-bg);
+  border: 1px solid #e8d08a;
+  border-radius: var(--r-sm);
+  padding: 5px 10px;
+}
+.tts-warn.visible { display: inline-block; }
+.tts-active-voice {
+  display: none;
+  font-size: 11px;
+  color: var(--safe);
+  background: var(--safe-bg);
+  border: 1px solid var(--safe-border);
+  border-radius: var(--r-sm);
+  padding: 5px 10px;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tts-active-voice.visible { display: inline-block; }
+
+/* ─────────────────────────── LANG NOTICE ─────────────────────────── */
+.lang-notice {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 40px;
+  background: var(--blue-bg);
+  border-bottom: 1px solid var(--blue-border);
+  font-size: 13px;
+  color: var(--ink3);
+}
+.lang-notice.visible { display: flex; }
+.lang-notice strong { color: var(--ink); }
+
+/* ─────────────────────────── OUTPUT STRIP ─────────────────────────── */
+.output-strip {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 20px 40px;
+  flex-shrink: 0;
+}
+.output-strip-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.output-box {
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r);
+  padding: 18px 22px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 68px;
+  transition: border-color .3s, box-shadow .3s;
+}
+.output-box.speaking {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(201,65,12,.08);
+}
+.output-text {
+  font-family: 'DM Serif Display', serif;
+  font-size: 22px;
+  color: var(--ink);
+  flex: 1;
+  line-height: 1.3;
+}
+.output-text.empty {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  color: var(--ink4);
+  font-weight: 300;
+  font-style: italic;
+}
+.output-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.btn-icon {
+  width: 36px; height: 36px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink3);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+  transition: all .18s;
+  box-shadow: var(--shadow-sm);
+}
+.btn-icon:hover { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+/* Waveform */
+.waveform {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 22px;
+  opacity: 0;
+  transition: opacity .3s;
+}
+.waveform.active { opacity: 1; }
+.waveform span {
+  display: block;
+  width: 3px;
+  background: var(--accent);
+  border-radius: 3px;
+  animation: wave .8s ease-in-out infinite;
+}
+.waveform span:nth-child(1) { animation-delay: 0s; height: 6px; }
+.waveform span:nth-child(2) { animation-delay: .1s; height: 14px; }
+.waveform span:nth-child(3) { animation-delay: .2s; height: 22px; }
+.waveform span:nth-child(4) { animation-delay: .3s; height: 14px; }
+.waveform span:nth-child(5) { animation-delay: .4s; height: 6px; }
+@keyframes wave {
+  0%, 100% { transform: scaleY(.4); opacity: .5; }
+  50% { transform: scaleY(1); opacity: 1; }
+}
+
+/* ─────────────────────────── MAIN BODY ─────────────────────────── */
+.app-body {
+  display: flex;
+  flex: 1;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0;
+  min-height: 0;
+}
+
+/* ─────────────────────────── SIDEBAR ─────────────────────────── */
+.sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  padding: 28px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface);
+}
+.sidebar-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--ink4);
+  padding: 0 20px 14px;
+}
+.cat-btn {
+  padding: 11px 20px;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: var(--ink3);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+  width: 100%;
+  transition: all .18s;
+  border-left: 2px solid transparent;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cat-btn:hover { background: var(--surface2); color: var(--ink); }
+.cat-btn.active { color: var(--ink); background: var(--surface2); }
+
+.cat-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: transform .2s;
+}
+.cat-btn.active .cat-dot { transform: scale(1.4); }
+
+.cat-btn[data-cat="greetings"] .cat-dot { background: var(--cat-greetings); }
+.cat-btn[data-cat="greetings"].active { border-left-color: var(--cat-greetings); }
+.cat-btn[data-cat="needs"] .cat-dot { background: var(--cat-needs); }
+.cat-btn[data-cat="needs"].active { border-left-color: var(--cat-needs); }
+.cat-btn[data-cat="emergency"] .cat-dot { background: var(--cat-emergency); }
+.cat-btn[data-cat="emergency"].active { border-left-color: var(--cat-emergency); }
+.cat-btn[data-cat="medical"] .cat-dot { background: var(--cat-medical); }
+.cat-btn[data-cat="medical"].active { border-left-color: var(--cat-medical); }
+.cat-btn[data-cat="social"] .cat-dot { background: var(--cat-social); }
+.cat-btn[data-cat="social"].active { border-left-color: var(--cat-social); }
+.cat-btn[data-cat="feelings"] .cat-dot { background: var(--cat-feelings); }
+.cat-btn[data-cat="feelings"].active { border-left-color: var(--cat-feelings); }
+
+/* ─────────────────────────── PHRASE AREA ─────────────────────────── */
+.phrase-area {
+  flex: 1;
+  padding: 28px 32px 28px 28px;
+  overflow-y: auto;
+  background: var(--bg);
+}
+.phrase-area::-webkit-scrollbar { width: 4px; }
+.phrase-area::-webkit-scrollbar-track { background: transparent; }
+.phrase-area::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+.category-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.category-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 22px;
+  color: var(--ink);
+  line-height: 1;
+}
+.category-count {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 3px 10px;
+  border-radius: 20px;
+  letter-spacing: .02em;
+}
+
+/* Phrase grid */
+.phrase-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.phrase-btn {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r);
+  padding: 16px 18px;
+  cursor: pointer;
+  text-align: left;
+  font-family: 'DM Sans', sans-serif;
+  color: var(--ink);
+  transition: all .18s;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  user-select: none;
+  animation: fadeSlideIn .22s ease both;
+  box-shadow: var(--shadow-sm);
+}
+.phrase-btn:hover {
+  border-color: var(--ink);
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
+}
+.phrase-btn:active { transform: scale(.98) translateY(0); }
+.phrase-btn.speaking {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(201,65,12,.1), var(--shadow);
+}
+
+.phrase-emoji { font-size: 20px; line-height: 1; }
+.phrase-text { font-size: 13.5px; line-height: 1.5; font-weight: 400; color: var(--ink2); }
+.phrase-subtext {
+  font-size: 11px;
+  color: var(--ink4);
+  line-height: 1.3;
+  font-style: italic;
+  margin-top: -3px;
+}
+
+/* Ripple */
+.ripple-circle {
+  position: absolute;
+  border-radius: 50%;
+  width: 60px; height: 60px;
+  background: rgba(201,65,12,.08);
+  pointer-events: none;
+  animation: ripple .5s ease-out forwards;
+}
+@keyframes ripple {
+  0% { transform: scale(0); opacity: .6; }
+  100% { transform: scale(4); opacity: 0; }
+}
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─────────────────────────── CUSTOM INPUT BAR ─────────────────────────── */
+.custom-section {
+  border-top: 1px solid var(--border);
+  padding: 16px 40px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: var(--surface);
+  flex-shrink: 0;
+}
+.custom-section-inner {
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.custom-input {
+  flex: 1;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 10px 16px;
+  color: var(--ink);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  outline: none;
+  transition: border-color .2s;
+}
+.custom-input::placeholder { color: var(--ink4); }
+.custom-input:focus { border-color: var(--ink2); }
+
+.btn-speak {
+  background: var(--ink);
+  color: #fff;
+  border: none;
+  border-radius: var(--r-sm);
+  padding: 10px 22px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: .02em;
+  cursor: pointer;
+  transition: all .18s;
+  white-space: nowrap;
+}
+.btn-speak:hover { background: var(--ink2); transform: translateY(-1px); }
+.btn-speak:active { transform: translateY(0); }
+
+.btn-stop {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--r-sm);
+  padding: 10px 18px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all .18s;
+  white-space: nowrap;
+}
+.btn-stop:hover { opacity: .88; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="site-header">
+  <div class="header-inner">
+    <div class="header-left">
+      <div class="logo-mark">🔊</div>
+      <div class="logo-name">
+        SilentVoice
+        <span>AAC Communication Board</span>
+      </div>
+    </div>
+    <div class="header-controls">
+      <!-- Language selector -->
+      <div class="lang-selector-wrap" id="langSelector">
+        <span id="langFlag" style="font-size:14px;padding:0 4px;">🌐</span>
+        <button class="lang-btn active" data-lang="en">English</button>
+        <div class="lang-divider"></div>
+        <button class="lang-btn" data-lang="hi">हिंदी</button>
+        <div class="lang-divider"></div>
+        <button class="lang-btn" data-lang="ta">தமிழ்</button>
+      </div>
+
+      <div class="rate-control">
+        <span>Speed</span>
+        <input type="range" id="rateSlider" min="0.5" max="2" step="0.1" value="1">
+        <span id="rateVal">1.0×</span>
+      </div>
+
+      <select class="voice-selector" id="voiceSelect">
+        <option>Loading voices…</option>
+      </select>
+
+      <span class="tts-warn" id="ttsWarn">⚠ No native voice</span>
+      <span class="tts-active-voice" id="ttsActiveVoice"></span>
+
+      <div class="status-badge" id="statusBadge">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">Ready</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Language notice -->
+<div class="lang-notice" id="langNotice">
+  <span>ℹ️</span>
+  <span id="langNoticeText">Phrases are now in <strong>English</strong>.</span>
+</div>
+
+<!-- Output strip -->
+<div class="output-strip">
+  <div class="output-strip-inner">
+    <div class="output-box" id="outputBox">
+      <div class="output-text empty" id="outputText">Click any phrase to speak…</div>
+      <div class="waveform" id="waveform">
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <div class="output-actions">
+        <button class="btn-icon" id="repeatBtn" title="Repeat last phrase">↺</button>
+        <button class="btn-icon" id="stopBtn" title="Stop speaking">■</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Main -->
+<div style="flex:1;display:flex;min-height:0;max-width:1200px;width:100%;margin:0 auto;border-left:1px solid var(--border);border-right:1px solid var(--border);">
+  <aside class="sidebar">
+    <div class="sidebar-label">Categories</div>
+    <button class="cat-btn active" data-cat="greetings"><span class="cat-dot"></span><span class="cat-label">Greetings</span></button>
+    <button class="cat-btn" data-cat="needs"><span class="cat-dot"></span><span class="cat-label">Daily Needs</span></button>
+    <button class="cat-btn" data-cat="emergency"><span class="cat-dot"></span><span class="cat-label">Emergency</span></button>
+    <button class="cat-btn" data-cat="medical"><span class="cat-dot"></span><span class="cat-label">Medical</span></button>
+    <button class="cat-btn" data-cat="social"><span class="cat-dot"></span><span class="cat-label">Social</span></button>
+    <button class="cat-btn" data-cat="feelings"><span class="cat-dot"></span><span class="cat-label">Feelings</span></button>
+  </aside>
+
+  <div class="phrase-area" id="phraseArea">
+    <div class="category-header">
+      <div class="category-title" id="catTitle">Greetings</div>
+      <div class="category-count" id="catCount"></div>
+    </div>
+    <div class="phrase-grid" id="phraseGrid"></div>
+  </div>
+</div>
+
+<!-- Custom input -->
+<div class="custom-section">
+  <div class="custom-section-inner">
+    <input type="text" class="custom-input" id="customInput" placeholder="Type a custom message to speak…" maxlength="300">
+    <button class="btn-speak" id="customSpeak">▶ Speak</button>
+    <button class="btn-stop" id="globalStop">■ Stop</button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// PHRASE DATA — all languages
+// ══════════════════════════════════════════════════════
+const PHRASES = {
+  en: {
+    greetings: [
+      { emoji: '👋', text: 'Hello! How are you?' },
+      { emoji: '😊', text: 'Good morning!' },
+      { emoji: '🌙', text: 'Good evening!' },
+      { emoji: '🤝', text: 'Nice to meet you.' },
+      { emoji: '👍', text: 'Yes, thank you.' },
+      { emoji: '🙏', text: 'Please and thank you.' },
+      { emoji: '👋', text: 'Goodbye! Take care.' },
+      { emoji: '😄', text: 'I am doing well, thank you.' },
+      { emoji: '🔄', text: 'Can you please repeat that?' },
+      { emoji: '✍️', text: 'Please write it down for me.' },
+      { emoji: '🐢', text: 'Please speak slowly.' },
+      { emoji: '😅', text: 'I did not understand.' },
+    ],
+    needs: [
+      { emoji: '💧', text: 'I need water, please.' },
+      { emoji: '🍽️', text: 'I am hungry. I need food.' },
+      { emoji: '🚽', text: 'I need to use the restroom.' },
+      { emoji: '😴', text: 'I need to rest.' },
+      { emoji: '🥶', text: 'I am feeling cold.' },
+      { emoji: '🥵', text: 'I am feeling hot.' },
+      { emoji: '💊', text: 'I need my medication.' },
+      { emoji: '🪑', text: 'I need to sit down.' },
+      { emoji: '📞', text: 'Please call someone for me.' },
+      { emoji: '🏠', text: 'I want to go home.' },
+      { emoji: '🔇', text: 'It is too noisy here.' },
+      { emoji: '💡', text: 'Please turn on the light.' },
+    ],
+    emergency: [
+      { emoji: '🆘', text: 'Help me! This is an emergency!' },
+      { emoji: '🚑', text: 'Please call an ambulance immediately!' },
+      { emoji: '🔥', text: 'There is a fire! Evacuate now!' },
+      { emoji: '😖', text: 'I am in severe pain!' },
+      { emoji: '🫁', text: 'I cannot breathe properly!' },
+      { emoji: '💉', text: 'I am having an allergic reaction!' },
+      { emoji: '💔', text: 'I think I am having a heart attack!' },
+      { emoji: '🏥', text: 'Take me to the hospital now!' },
+      { emoji: '📵', text: 'Do not leave me alone!' },
+      { emoji: '🔒', text: 'I feel unsafe here.' },
+    ],
+    medical: [
+      { emoji: '🤕', text: 'I have a headache.' },
+      { emoji: '🤢', text: 'I feel nauseous.' },
+      { emoji: '🌡️', text: 'I think I have a fever.' },
+      { emoji: '💊', text: 'I need my medicine now.' },
+      { emoji: '🩺', text: 'I need to see a doctor.' },
+      { emoji: '🩸', text: 'I am diabetic. I need sugar.' },
+      { emoji: '❤️', text: 'I have a heart condition.' },
+      { emoji: '🫀', text: 'My blood pressure is high.' },
+      { emoji: '🦽', text: 'I need my wheelchair.' },
+      { emoji: '👁️', text: 'I have a visual impairment.' },
+      { emoji: '👂', text: 'I have a hearing impairment.' },
+      { emoji: '🗣️', text: 'I have a speech impairment.' },
+    ],
+    social: [
+      { emoji: '😂', text: 'That is very funny!' },
+      { emoji: '🎉', text: 'Congratulations!' },
+      { emoji: '👏', text: 'Well done! Great job!' },
+      { emoji: '❓', text: 'Could you help me, please?' },
+      { emoji: '⏳', text: 'Please wait a moment.' },
+      { emoji: '✅', text: 'I agree with you.' },
+      { emoji: '❌', text: 'I disagree. Let me explain.' },
+      { emoji: '💬', text: 'I have something to say.' },
+      { emoji: '🙂', text: 'No problem at all.' },
+      { emoji: '😔', text: 'I am sorry to hear that.' },
+      { emoji: '🎂', text: 'Happy Birthday to you!' },
+      { emoji: '🤔', text: 'Let me think about that.' },
+    ],
+    feelings: [
+      { emoji: '😊', text: 'I am happy right now.' },
+      { emoji: '😢', text: 'I am feeling sad.' },
+      { emoji: '😰', text: 'I am feeling anxious.' },
+      { emoji: '😡', text: 'I am frustrated. Please be patient.' },
+      { emoji: '😌', text: 'I am calm and okay.' },
+      { emoji: '😔', text: 'I am feeling lonely.' },
+      { emoji: '🤗', text: 'I feel loved and supported.' },
+      { emoji: '😓', text: 'I am very tired.' },
+      { emoji: '😤', text: 'I am overwhelmed right now.' },
+      { emoji: '🥹', text: 'I am deeply grateful.' },
+      { emoji: '😶', text: 'I do not know how I feel.' },
+      { emoji: '💪', text: 'I am feeling strong today.' },
+    ],
+  },
+  hi: {
+    greetings: [
+      { emoji: '👋', text: 'नमस्ते! आप कैसे हैं?', en: 'Hello! How are you?' },
+      { emoji: '😊', text: 'सुप्रभात!', en: 'Good morning!' },
+      { emoji: '🌙', text: 'शुभ संध्या!', en: 'Good evening!' },
+      { emoji: '🤝', text: 'आपसे मिलकर खुशी हुई।', en: 'Nice to meet you.' },
+      { emoji: '👍', text: 'हाँ, धन्यवाद।', en: 'Yes, thank you.' },
+      { emoji: '🙏', text: 'कृपया और धन्यवाद।', en: 'Please and thank you.' },
+      { emoji: '👋', text: 'अलविदा! ध्यान रखना।', en: 'Goodbye! Take care.' },
+      { emoji: '😄', text: 'मैं ठीक हूँ, धन्यवाद।', en: 'I am doing well, thank you.' },
+      { emoji: '🔄', text: 'क्या आप दोबारा कह सकते हैं?', en: 'Can you please repeat that?' },
+      { emoji: '✍️', text: 'कृपया मेरे लिए लिख दें।', en: 'Please write it down for me.' },
+      { emoji: '🐢', text: 'कृपया धीरे बोलें।', en: 'Please speak slowly.' },
+      { emoji: '😅', text: 'मुझे समझ नहीं आया।', en: 'I did not understand.' },
+    ],
+    needs: [
+      { emoji: '💧', text: 'मुझे पानी चाहिए, कृपया।', en: 'I need water, please.' },
+      { emoji: '🍽️', text: 'मुझे भूख लगी है। मुझे खाना चाहिए।', en: 'I am hungry. I need food.' },
+      { emoji: '🚽', text: 'मुझे शौचालय जाना है।', en: 'I need to use the restroom.' },
+      { emoji: '😴', text: 'मुझे आराम करना है।', en: 'I need to rest.' },
+      { emoji: '🥶', text: 'मुझे ठंड लग रही है।', en: 'I am feeling cold.' },
+      { emoji: '🥵', text: 'मुझे गर्मी लग रही है।', en: 'I am feeling hot.' },
+      { emoji: '💊', text: 'मुझे मेरी दवाई चाहिए।', en: 'I need my medication.' },
+      { emoji: '🪑', text: 'मुझे बैठना है।', en: 'I need to sit down.' },
+      { emoji: '📞', text: 'कृपया किसी को बुलाएं।', en: 'Please call someone for me.' },
+      { emoji: '🏠', text: 'मुझे घर जाना है।', en: 'I want to go home.' },
+      { emoji: '🔇', text: 'यहाँ बहुत शोर है।', en: 'It is too noisy here.' },
+      { emoji: '💡', text: 'कृपया बत्ती जलाएं।', en: 'Please turn on the light.' },
+    ],
+    emergency: [
+      { emoji: '🆘', text: 'मेरी मदद करो! यह आपातकाल है!', en: 'Help me! This is an emergency!' },
+      { emoji: '🚑', text: 'कृपया तुरंत एम्बुलेंस बुलाएं!', en: 'Please call an ambulance immediately!' },
+      { emoji: '🔥', text: 'आग लगी है! अभी निकलें!', en: 'There is a fire! Evacuate now!' },
+      { emoji: '😖', text: 'मुझे बहुत दर्द हो रहा है!', en: 'I am in severe pain!' },
+      { emoji: '🫁', text: 'मुझे सांस लेने में तकलीफ है!', en: 'I cannot breathe properly!' },
+      { emoji: '💉', text: 'मुझे एलर्जी हो रही है!', en: 'I am having an allergic reaction!' },
+      { emoji: '💔', text: 'मुझे दिल का दौरा पड़ रहा है!', en: 'I think I am having a heart attack!' },
+      { emoji: '🏥', text: 'मुझे अभी अस्पताल ले जाओ!', en: 'Take me to the hospital now!' },
+      { emoji: '📵', text: 'मुझे अकेला मत छोड़ो!', en: 'Do not leave me alone!' },
+      { emoji: '🔒', text: 'मैं यहाँ असुरक्षित महसूस कर रहा हूँ।', en: 'I feel unsafe here.' },
+    ],
+    medical: [
+      { emoji: '🤕', text: 'मेरे सिर में दर्द है।', en: 'I have a headache.' },
+      { emoji: '🤢', text: 'मुझे मितली आ रही है।', en: 'I feel nauseous.' },
+      { emoji: '🌡️', text: 'मुझे बुखार लग रहा है।', en: 'I think I have a fever.' },
+      { emoji: '💊', text: 'मुझे अभी दवाई चाहिए।', en: 'I need my medicine now.' },
+      { emoji: '🩺', text: 'मुझे डॉक्टर से मिलना है।', en: 'I need to see a doctor.' },
+      { emoji: '🩸', text: 'मैं मधुमेह का रोगी हूँ। मुझे चीनी चाहिए।', en: 'I am diabetic. I need sugar.' },
+      { emoji: '❤️', text: 'मुझे हृदय रोग है।', en: 'I have a heart condition.' },
+      { emoji: '🫀', text: 'मेरा रक्तचाप अधिक है।', en: 'My blood pressure is high.' },
+      { emoji: '🦽', text: 'मुझे मेरी व्हीलचेयर चाहिए।', en: 'I need my wheelchair.' },
+      { emoji: '👁️', text: 'मुझे दृष्टि दोष है।', en: 'I have a visual impairment.' },
+      { emoji: '👂', text: 'मुझे श्रवण दोष है।', en: 'I have a hearing impairment.' },
+      { emoji: '🗣️', text: 'मुझे वाक् दोष है।', en: 'I have a speech impairment.' },
+    ],
+    social: [
+      { emoji: '😂', text: 'यह बहुत मज़ेदार है!', en: 'That is very funny!' },
+      { emoji: '🎉', text: 'बधाई हो!', en: 'Congratulations!' },
+      { emoji: '👏', text: 'शाबाश! बहुत अच्छा!', en: 'Well done! Great job!' },
+      { emoji: '❓', text: 'क्या आप मेरी मदद कर सकते हैं?', en: 'Could you help me, please?' },
+      { emoji: '⏳', text: 'कृपया एक पल रुकें।', en: 'Please wait a moment.' },
+      { emoji: '✅', text: 'मैं आपसे सहमत हूँ।', en: 'I agree with you.' },
+      { emoji: '❌', text: 'मैं असहमत हूँ। मुझे समझाने दें।', en: 'I disagree. Let me explain.' },
+      { emoji: '💬', text: 'मुझे कुछ कहना है।', en: 'I have something to say.' },
+      { emoji: '🙂', text: 'कोई बात नहीं।', en: 'No problem at all.' },
+      { emoji: '😔', text: 'यह सुनकर दुख हुआ।', en: 'I am sorry to hear that.' },
+      { emoji: '🎂', text: 'जन्मदिन मुबारक!', en: 'Happy Birthday to you!' },
+      { emoji: '🤔', text: 'मुझे सोचने दें।', en: 'Let me think about that.' },
+    ],
+    feelings: [
+      { emoji: '😊', text: 'मैं अभी खुश हूँ।', en: 'I am happy right now.' },
+      { emoji: '😢', text: 'मैं उदास महसूस कर रहा हूँ।', en: 'I am feeling sad.' },
+      { emoji: '😰', text: 'मैं चिंतित महसूस कर रहा हूँ।', en: 'I am feeling anxious.' },
+      { emoji: '😡', text: 'मैं निराश हूँ। कृपया धैर्य रखें।', en: 'I am frustrated. Please be patient.' },
+      { emoji: '😌', text: 'मैं शांत और ठीक हूँ।', en: 'I am calm and okay.' },
+      { emoji: '😔', text: 'मैं अकेलापन महसूस कर रहा हूँ।', en: 'I am feeling lonely.' },
+      { emoji: '🤗', text: 'मुझे प्यार और सहारा मिल रहा है।', en: 'I feel loved and supported.' },
+      { emoji: '😓', text: 'मैं बहुत थका हुआ हूँ।', en: 'I am very tired.' },
+      { emoji: '😤', text: 'मैं अभी बहुत दबाव में हूँ।', en: 'I am overwhelmed right now.' },
+      { emoji: '🥹', text: 'मैं बहुत आभारी हूँ।', en: 'I am deeply grateful.' },
+      { emoji: '😶', text: 'मुझे नहीं पता मैं कैसा महसूस कर रहा हूँ।', en: 'I do not know how I feel.' },
+      { emoji: '💪', text: 'मैं आज मज़बूत महसूस कर रहा हूँ।', en: 'I am feeling strong today.' },
+    ],
+  },
+  ta: {
+    greetings: [
+      { emoji: '👋', text: 'வணக்கம்! நீங்கள் எப்படி இருக்கிறீர்கள்?', en: 'Hello! How are you?' },
+      { emoji: '😊', text: 'காலை வணக்கம்!', en: 'Good morning!' },
+      { emoji: '🌙', text: 'மாலை வணக்கம்!', en: 'Good evening!' },
+      { emoji: '🤝', text: 'உங்களை சந்தித்தது மகிழ்ச்சி।', en: 'Nice to meet you.' },
+      { emoji: '👍', text: 'ஆம், நன்றி।', en: 'Yes, thank you.' },
+      { emoji: '🙏', text: 'தயவுசெய்து மற்றும் நன்றி।', en: 'Please and thank you.' },
+      { emoji: '👋', text: 'வணக்கம்! கவனமாக இருங்கள்।', en: 'Goodbye! Take care.' },
+      { emoji: '😄', text: 'நான் நலமாக இருக்கிறேன், நன்றி।', en: 'I am doing well, thank you.' },
+      { emoji: '🔄', text: 'தயவுசெய்து மீண்டும் சொல்லுங்களா?', en: 'Can you please repeat that?' },
+      { emoji: '✍️', text: 'தயவுசெய்து என்னுடைய எழுத்துக்காக எழுதுங்கள்।', en: 'Please write it down for me.' },
+      { emoji: '🐢', text: 'தயவுசெய்து மெதுவாக பேசுங்கள்।', en: 'Please speak slowly.' },
+      { emoji: '😅', text: 'எனக்கு புரியவில்லை।', en: 'I did not understand.' },
+    ],
+    needs: [
+      { emoji: '💧', text: 'எனக்கு தண்ணீர் வேண்டும், தயவுசெய்து।', en: 'I need water, please.' },
+      { emoji: '🍽️', text: 'எனக்கு பசிக்கிறது। எனக்கு உணவு வேண்டும்।', en: 'I am hungry. I need food.' },
+      { emoji: '🚽', text: 'எனக்கு கழிப்பறை செல்ல வேண்டும்।', en: 'I need to use the restroom.' },
+      { emoji: '😴', text: 'எனக்கு ஓய்வு எடுக்க வேண்டும்।', en: 'I need to rest.' },
+      { emoji: '🥶', text: 'எனக்கு குளிராக உணர்கிறேன்।', en: 'I am feeling cold.' },
+      { emoji: '🥵', text: 'எனக்கு சூடாக உணர்கிறேன்।', en: 'I am feeling hot.' },
+      { emoji: '💊', text: 'எனக்கு என் மருந்து வேண்டும்।', en: 'I need my medication.' },
+      { emoji: '🪑', text: 'எனக்கு உட்கார வேண்டும்।', en: 'I need to sit down.' },
+      { emoji: '📞', text: 'தயவுசெய்து யாரையாவது அழையுங்கள்।', en: 'Please call someone for me.' },
+      { emoji: '🏠', text: 'நான் வீட்டிற்கு செல்ல விரும்புகிறேன்।', en: 'I want to go home.' },
+      { emoji: '🔇', text: 'இங்கே மிகவும் சத்தமாக இருக்கிறது।', en: 'It is too noisy here.' },
+      { emoji: '💡', text: 'தயவுசெய்து விளக்கை போடுங்கள்।', en: 'Please turn on the light.' },
+    ],
+    emergency: [
+      { emoji: '🆘', text: 'உதவுங்கள்! இது அவசரநிலை!', en: 'Help me! This is an emergency!' },
+      { emoji: '🚑', text: 'தயவுசெய்து உடனே ஆம்புலன்ஸ் அழையுங்கள்!', en: 'Please call an ambulance immediately!' },
+      { emoji: '🔥', text: 'தீ பிடித்துள்ளது! இப்போதே வெளியேறுங்கள்!', en: 'There is a fire! Evacuate now!' },
+      { emoji: '😖', text: 'எனக்கு மிகவும் வலிக்கிறது!', en: 'I am in severe pain!' },
+      { emoji: '🫁', text: 'எனக்கு சரியாக சுவாசிக்க முடியவில்லை!', en: 'I cannot breathe properly!' },
+      { emoji: '💉', text: 'எனக்கு ஒவ்வாமை எதிர்வினை ஏற்படுகிறது!', en: 'I am having an allergic reaction!' },
+      { emoji: '💔', text: 'எனக்கு மாரடைப்பு வருகிறது என்று நினைக்கிறேன்!', en: 'I think I am having a heart attack!' },
+      { emoji: '🏥', text: 'என்னை இப்போதே மருத்துவமனைக்கு அழைத்துச் செல்லுங்கள்!', en: 'Take me to the hospital now!' },
+      { emoji: '📵', text: 'என்னை தனியாக விடாதீர்கள்!', en: 'Do not leave me alone!' },
+      { emoji: '🔒', text: 'இங்கே எனக்கு பாதுகாப்பற்றதாக உணர்கிறேன்।', en: 'I feel unsafe here.' },
+    ],
+    medical: [
+      { emoji: '🤕', text: 'எனக்கு தலைவலி இருக்கிறது।', en: 'I have a headache.' },
+      { emoji: '🤢', text: 'எனக்கு குமட்டல் உணர்கிறேன்।', en: 'I feel nauseous.' },
+      { emoji: '🌡️', text: 'எனக்கு காய்ச்சல் இருக்கிறது என்று நினைக்கிறேன்।', en: 'I think I have a fever.' },
+      { emoji: '💊', text: 'எனக்கு இப்போதே மருந்து வேண்டும்।', en: 'I need my medicine now.' },
+      { emoji: '🩺', text: 'எனக்கு மருத்துவரை சந்திக்க வேண்டும்।', en: 'I need to see a doctor.' },
+      { emoji: '🩸', text: 'நான் நீரிழிவு நோயாளி. எனக்கு சர்க்கரை வேண்டும்।', en: 'I am diabetic. I need sugar.' },
+      { emoji: '❤️', text: 'எனக்கு இதய நோய் இருக்கிறது।', en: 'I have a heart condition.' },
+      { emoji: '🫀', text: 'என் இரத்த அழுத்தம் அதிகமாக உள்ளது।', en: 'My blood pressure is high.' },
+      { emoji: '🦽', text: 'எனக்கு என் சக்கர நாற்காலி வேண்டும்।', en: 'I need my wheelchair.' },
+      { emoji: '👁️', text: 'எனக்கு பார்வை குறைபாடு உள்ளது।', en: 'I have a visual impairment.' },
+      { emoji: '👂', text: 'எனக்கு கேட்கும் குறைபாடு உள்ளது।', en: 'I have a hearing impairment.' },
+      { emoji: '🗣️', text: 'எனக்கு பேச்சு குறைபாடு உள்ளது।', en: 'I have a speech impairment.' },
+    ],
+    social: [
+      { emoji: '😂', text: 'இது மிகவும் வேடிக்கையாக உள்ளது!', en: 'That is very funny!' },
+      { emoji: '🎉', text: 'வாழ்த்துக்கள்!', en: 'Congratulations!' },
+      { emoji: '👏', text: 'நன்றாக செய்தீர்கள்! சிறப்பான வேலை!', en: 'Well done! Great job!' },
+      { emoji: '❓', text: 'நீங்கள் என்னை உதவ முடியுமா?', en: 'Could you help me, please?' },
+      { emoji: '⏳', text: 'தயவுசெய்து ஒரு நிமிடம் காத்திருங்கள்।', en: 'Please wait a moment.' },
+      { emoji: '✅', text: 'நான் உங்களுடன் உடன்படுகிறேன்।', en: 'I agree with you.' },
+      { emoji: '❌', text: 'நான் உடன்படவில்லை. விளக்க அனுமதியுங்கள்।', en: 'I disagree. Let me explain.' },
+      { emoji: '💬', text: 'என்னிடம் ஒன்று சொல்ல வேண்டும்।', en: 'I have something to say.' },
+      { emoji: '🙂', text: 'எந்த பிரச்சனையும் இல்லை।', en: 'No problem at all.' },
+      { emoji: '😔', text: 'இதை கேட்டு வருந்துகிறேன்।', en: 'I am sorry to hear that.' },
+      { emoji: '🎂', text: 'பிறந்தநாள் வாழ்த்துக்கள்!', en: 'Happy Birthday to you!' },
+      { emoji: '🤔', text: 'என்னை சிந்திக்க விடுங்கள்।', en: 'Let me think about that.' },
+    ],
+    feelings: [
+      { emoji: '😊', text: 'நான் இப்போது மகிழ்ச்சியாக இருக்கிறேன்।', en: 'I am happy right now.' },
+      { emoji: '😢', text: 'நான் சோகமாக உணர்கிறேன்।', en: 'I am feeling sad.' },
+      { emoji: '😰', text: 'நான் கவலையாக உணர்கிறேன்।', en: 'I am feeling anxious.' },
+      { emoji: '😡', text: 'நான் விரக்தியாக இருக்கிறேன். பொறுமையாக இருங்கள்।', en: 'I am frustrated. Please be patient.' },
+      { emoji: '😌', text: 'நான் அமைதியாகவும் சரியாகவும் இருக்கிறேன்।', en: 'I am calm and okay.' },
+      { emoji: '😔', text: 'நான் தனிமையாக உணர்கிறேன்।', en: 'I am feeling lonely.' },
+      { emoji: '🤗', text: 'நான் அன்பும் ஆதரவும் உணர்கிறேன்।', en: 'I feel loved and supported.' },
+      { emoji: '😓', text: 'நான் மிகவும் களைப்பாக இருக்கிறேன்।', en: 'I am very tired.' },
+      { emoji: '😤', text: 'நான் இப்போது மிகவும் அழுத்தத்தில் இருக்கிறேன்।', en: 'I am overwhelmed right now.' },
+      { emoji: '🥹', text: 'நான் மிகவும் நன்றியுள்ளவனாக இருக்கிறேன்।', en: 'I am deeply grateful.' },
+      { emoji: '😶', text: 'எனக்கு எப்படி உணர்கிறேன் என்று தெரியவில்லை।', en: 'I do not know how I feel.' },
+      { emoji: '💪', text: 'நான் இன்று வலிமையாக உணர்கிறேன்।', en: 'I am feeling strong today.' },
+    ],
+  },
+};
+
+const CAT_LABELS = {
+  en: { greetings: 'Greetings', needs: 'Daily Needs', emergency: 'Emergency', medical: 'Medical', social: 'Social', feelings: 'Feelings' },
+  hi: { greetings: 'अभिवादन', needs: 'दैनिक जरूरतें', emergency: 'आपातकाल', medical: 'चिकित्सा', social: 'सामाजिक', feelings: 'भावनाएं' },
+  ta: { greetings: 'வணக்கம்', needs: 'அன்றாட தேவைகள்', emergency: 'அவசரநிலை', medical: 'மருத்துவம்', social: 'சமூகம்', feelings: 'உணர்வுகள்' },
+};
+
+const LANG_META = {
+  en: { name: 'English',   flag: '🇬🇧', bcp47: 'en',    notice: 'English' },
+  hi: { name: 'हिंदी',    flag: '🇮🇳', bcp47: 'hi-IN', notice: 'Hindi (हिंदी)' },
+  ta: { name: 'தமிழ்',   flag: '🇮🇳', bcp47: 'ta-IN', notice: 'Tamil (தமிழ்)' },
+};
+
+let currentLang = 'en';
+let currentCat = 'greetings';
+let lastPhrase = '';
+let voices = [];
+
+const phraseGrid     = document.getElementById('phraseGrid');
+const phraseArea     = document.getElementById('phraseArea');
+const catTitle       = document.getElementById('catTitle');
+const catCount       = document.getElementById('catCount');
+const outputText     = document.getElementById('outputText');
+const outputBox      = document.getElementById('outputBox');
+const waveform       = document.getElementById('waveform');
+const statusDot      = document.getElementById('statusDot');
+const statusText     = document.getElementById('statusText');
+const voiceSelect    = document.getElementById('voiceSelect');
+const rateSlider     = document.getElementById('rateSlider');
+const rateVal        = document.getElementById('rateVal');
+const customInput    = document.getElementById('customInput');
+const langNotice     = document.getElementById('langNotice');
+const langNoticeText = document.getElementById('langNoticeText');
+const langFlag       = document.getElementById('langFlag');
+const ttsWarn        = document.getElementById('ttsWarn');
+const ttsActiveVoice = document.getElementById('ttsActiveVoice');
+
+function loadVoices() {
+  voices = speechSynthesis.getVoices();
+  updateVoiceSelector();
+}
+
+function updateVoiceSelector() {
+  const meta = LANG_META[currentLang];
+  const bcp  = meta.bcp47.toLowerCase();
+  const prefix = bcp.split('-')[0];
+  let pool = voices.filter(v => v.lang.toLowerCase() === bcp);
+  if (!pool.length) pool = voices.filter(v => v.lang.toLowerCase().startsWith(prefix + '-') || v.lang.toLowerCase() === prefix);
+  if (!pool.length) pool = voices.filter(v => v.lang.toLowerCase().startsWith(prefix));
+  const hasNative = pool.length > 0;
+  if (!hasNative && currentLang !== 'en') {
+    ttsWarn.textContent = `⚠ No ${meta.name} voice`;
+    ttsWarn.classList.add('visible');
+    ttsActiveVoice.classList.remove('visible');
+  } else {
+    ttsWarn.classList.remove('visible');
+  }
+  voiceSelect.innerHTML = '';
+  if (hasNative) {
+    pool.forEach((v, i) => {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = `${v.name}${v.localService ? '' : ' ☁'} (${v.lang})`;
+      voiceSelect.appendChild(opt);
+    });
+  } else {
+    const opt = document.createElement('option');
+    opt.value = -1;
+    opt.textContent = `System default for ${meta.name}`;
+    voiceSelect.appendChild(opt);
+  }
+  voiceSelect._pool = pool;
+  voiceSelect._hasNative = hasNative;
+  updateActiveVoiceBadge();
+}
+
+function updateActiveVoiceBadge() {
+  const pool = voiceSelect._pool || [];
+  if (voiceSelect._hasNative && pool.length) {
+    const v = pool[Math.max(0, parseInt(voiceSelect.value, 10))];
+    if (v) {
+      ttsActiveVoice.textContent = `${LANG_META[currentLang].flag} ${v.name}`;
+      ttsActiveVoice.classList.add('visible');
+    }
+  } else {
+    ttsActiveVoice.classList.remove('visible');
+  }
+}
+
+speechSynthesis.onvoiceschanged = loadVoices;
+loadVoices();
+voiceSelect.addEventListener('change', updateActiveVoiceBadge);
+
+function renderPhrases(cat) {
+  const phrases = PHRASES[currentLang][cat];
+  catTitle.textContent = CAT_LABELS[currentLang][cat];
+  catCount.textContent = `${phrases.length} phrases`;
+  phraseGrid.innerHTML = '';
+  phrases.forEach((p, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'phrase-btn';
+    btn.style.animationDelay = `${i * 0.03}s`;
+    const subHtml = (currentLang !== 'en' && p.en)
+      ? `<span class="phrase-subtext">${p.en}</span>` : '';
+    btn.innerHTML = `<span class="phrase-emoji">${p.emoji}</span><span class="phrase-text">${p.text}</span>${subHtml}`;
+    btn.addEventListener('click', e => { addRipple(btn, e); speak(p.text, btn); });
+    phraseGrid.appendChild(btn);
+  });
+}
+
+function addRipple(btn, e) {
+  const rect = btn.getBoundingClientRect();
+  const c = document.createElement('div');
+  c.className = 'ripple-circle';
+  c.style.left = (e.clientX - rect.left - 30) + 'px';
+  c.style.top  = (e.clientY - rect.top  - 30) + 'px';
+  btn.appendChild(c);
+  setTimeout(() => c.remove(), 600);
+}
+
+function speak(text, btn) {
+  speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  const meta = LANG_META[currentLang];
+  const pool = voiceSelect._pool || [];
+  const idx  = parseInt(voiceSelect.value, 10);
+  utter.lang = meta.bcp47;
+  if (voiceSelect._hasNative && pool[idx]) {
+    utter.voice = pool[idx];
+    utter.lang  = pool[idx].lang;
+  }
+  utter.rate = parseFloat(rateSlider.value);
+  lastPhrase = text;
+  outputText.textContent = text;
+  outputText.classList.remove('empty');
+  outputBox.classList.add('speaking');
+  waveform.classList.add('active');
+  statusDot.classList.add('speaking-dot');
+  statusText.textContent = 'Speaking…';
+  if (btn) btn.classList.add('speaking');
+  const done = () => {
+    outputBox.classList.remove('speaking');
+    waveform.classList.remove('active');
+    statusDot.classList.remove('speaking-dot');
+    statusText.textContent = 'Ready';
+    if (btn) btn.classList.remove('speaking');
+  };
+  utter.onend = done;
+  utter.onerror = done;
+  speechSynthesis.speak(utter);
+}
+
+function switchLanguage(lang) {
+  currentLang = lang;
+  const meta = LANG_META[lang];
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
+  langFlag.textContent = meta.flag;
+  if (lang === 'en') {
+    langNotice.classList.remove('visible');
+  } else {
+    langNotice.classList.add('visible');
+    langNoticeText.innerHTML = `Phrases are now in <strong>${meta.notice}</strong>. English translation shown below each phrase.`;
+  }
+  document.querySelectorAll('.cat-btn').forEach(btn => {
+    btn.querySelector('.cat-label').textContent = CAT_LABELS[lang][btn.dataset.cat];
+  });
+  updateVoiceSelector();
+  renderPhrases(currentCat);
+  outputText.textContent = 'Click any phrase to speak…';
+  outputText.classList.add('empty');
+  lastPhrase = '';
+}
+
+document.querySelectorAll('.cat-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentCat = btn.dataset.cat;
+    renderPhrases(currentCat);
+  });
+});
+
+document.querySelectorAll('.lang-btn').forEach(btn => {
+  btn.addEventListener('click', () => switchLanguage(btn.dataset.lang));
+});
+
+rateSlider.addEventListener('input', () => {
+  rateVal.textContent = parseFloat(rateSlider.value).toFixed(1) + '×';
+});
+
+document.getElementById('repeatBtn').addEventListener('click', () => {
+  if (lastPhrase) speak(lastPhrase, null);
+});
+
+const stopAll = () => {
+  speechSynthesis.cancel();
+  waveform.classList.remove('active');
+  outputBox.classList.remove('speaking');
+  statusDot.classList.remove('speaking-dot');
+  statusText.textContent = 'Ready';
+  document.querySelectorAll('.phrase-btn.speaking').forEach(b => b.classList.remove('speaking'));
+};
+
+document.getElementById('stopBtn').addEventListener('click', stopAll);
+document.getElementById('globalStop').addEventListener('click', stopAll);
+
+document.getElementById('customSpeak').addEventListener('click', () => {
+  const t = customInput.value.trim();
+  if (t) speak(t, null);
+});
+customInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('customSpeak').click();
+});
+
+renderPhrases('greetings');
+</script>
+</body>
+</html>

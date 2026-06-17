@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SilentVoice — Live Lip Reading</title>
+  <meta name="description" content="Real-time visual speech recognition powered by LipNet CNN+BiGRU" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+/* ─────────────────────────── RESET + TOKENS ─────────────────────────── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg:      #f7f4ef;
+  --surface: #ffffff;
+  --surface2: #f0ede8;
+  --ink:     #1a1714;
+  --ink2:    #4a443d;
+  --ink3:    #8a8078;
+  --ink4:    #b8b0a8;
+  --border:  #e4dfd8;
+  --border2: #cfc8bf;
+
+  --accent:        #c9410c;
+  --accent-bg:     #fdf2ee;
+  --accent-border: #f0c4b2;
+
+  --safe:        #2d6a4f;
+  --safe-bg:     #eef6f1;
+  --safe-border: #b0d9c0;
+
+  --blue:        #2c5f8a;
+  --blue-bg:     #eef4f9;
+  --blue-border: #b0cfe8;
+
+  --gold:    #b8860b;
+  --gold-bg: #fdf8ee;
+
+  --shadow-sm: 0 1px 4px rgba(26,23,20,.06), 0 1px 2px rgba(26,23,20,.04);
+  --shadow:    0 4px 20px rgba(26,23,20,.08), 0 1px 6px rgba(26,23,20,.05);
+  --shadow-lg: 0 12px 40px rgba(26,23,20,.12), 0 4px 12px rgba(26,23,20,.06);
+
+  --r:    14px;
+  --r-sm: 8px;
+  --r-lg: 20px;
+
+  /* layout */
+  --header-h: 64px;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.55;
+  font-size: 15px;
+}
+
+/* ─────────────────────────── HEADER ─────────────────────────── */
+.site-header {
+  height: var(--header-h);
+  background: var(--ink);
+  padding: 0 40px;
+  display: flex;
+  align-items: center;
+  position: relative;
+  z-index: 10;
+  flex-shrink: 0;
+}
+.header-inner {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.logo-mark {
+  width: 38px;
+  height: 38px;
+  background: var(--accent);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 18px;
+}
+.logo-name {
+  font-family: 'DM Serif Display', serif;
+  font-size: 20px;
+  color: #fff;
+  line-height: 1;
+}
+.logo-name span {
+  display: block;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.45);
+  margin-top: 3px;
+}
+
+/* Status pill */
+#status-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: rgba(255,255,255,.5);
+  transition: border-color .3s, background .3s;
+}
+#status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink4);
+  transition: background .3s;
+  flex-shrink: 0;
+}
+#status-pill.speaking {
+  border-color: rgba(201,65,12,.4);
+  background: rgba(201,65,12,.08);
+  color: rgba(255,255,255,.75);
+}
+#status-pill.speaking #status-dot {
+  background: var(--accent);
+  animation: pulse 1.4s ease infinite;
+}
+
+/* ─────────────────────────── BODY SPLIT ─────────────────────────── */
+#body {
+  display: flex;
+  height: calc(100vh - var(--header-h));
+}
+
+/* ─────────────────────────── LEFT — camera ─────────────────────────── */
+#left-panel {
+  width: 50vw;
+  background: var(--ink);
+  position: relative;
+  overflow: hidden;
+  border-top: 3px solid rgba(255,255,255,.08);
+  transition: border-top-color .25s;
+}
+#left-panel.face-detected { border-top-color: var(--safe); }
+#left-panel.no-face       { border-top-color: var(--accent); }
+
+video#video { display: none; }
+
+canvas#canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* HUD overlay */
+#cam-hud {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: linear-gradient(to top, rgba(26,23,20,.78) 0%, transparent 100%);
+  padding: 1.2rem 1.4rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: rgba(255,255,255,.55);
+  letter-spacing: .04em;
+}
+#face-indicator {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+#face-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  transition: background .25s;
+}
+#face-dot.detected { background: var(--safe); }
+#hud-right { text-align: right; line-height: 1.8; }
+
+/* ─────────────────────────── RIGHT — predictions ─────────────────────────── */
+#right-panel {
+  width: 50vw;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  padding: 32px 36px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+#right-panel::-webkit-scrollbar { width: 4px; }
+#right-panel::-webkit-scrollbar-track { background: transparent; }
+#right-panel::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+/* Section labels */
+.sv-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--ink4);
+  margin-bottom: 8px;
+}
+
+/* Predicted phrase */
+#phrase {
+  font-family: 'DM Serif Display', serif;
+  font-size: 3rem;
+  color: var(--ink);
+  line-height: 1.1;
+  min-height: 110px;
+  word-break: break-word;
+  display: flex;
+  align-items: flex-start;
+}
+#phrase.animate {
+  animation: fadeSlideUp .35s ease forwards;
+}
+
+/* Dividers */
+.sv-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 20px 0;
+}
+
+/* Raw CTC output */
+#raw {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--ink3);
+  word-break: break-all;
+  min-height: 1.4em;
+  padding: 10px 14px;
+  background: var(--surface2);
+  border-radius: var(--r-sm);
+  border-left: 3px solid var(--border2);
+}
+
+/* Confidence bar */
+#conf-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+#conf-pct {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--ink3);
+  font-weight: 500;
+}
+.conf-bar-track {
+  width: 100%;
+  height: 5px;
+  background: var(--surface2);
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+#conf-bar {
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width .5s ease;
+}
+
+/* History list */
+#history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 40px;
+}
+.hist-pill {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 9px 14px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  color: var(--ink2);
+  animation: slideInRight .28s ease forwards;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Replay button */
+#replay-btn {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--ink);
+  color: #fff;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 22px;
+  border-radius: var(--r-sm);
+  border: none;
+  cursor: pointer;
+  letter-spacing: .02em;
+  transition: background .18s, transform .1s;
+  margin-top: auto;
+  box-shadow: var(--shadow-sm);
+}
+#replay-btn:hover { background: var(--ink2); transform: translateY(-1px); }
+#replay-btn:active { transform: translateY(0); }
+
+/* ─────────────────────────── ANIMATIONS ─────────────────────────── */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(201,65,12,.4); }
+  50%       { box-shadow: 0 0 0 7px rgba(201,65,12,0); }
+}
+  </style>
+</head>
+<body>
+
+  <!-- ─── HEADER ─────────────────────────────────────────────── -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="header-left">
+        <div class="logo-mark">👁</div>
+        <div class="logo-name">
+          SilentVoice
+          <span>Real-Time Visual Speech Recognition — LipNet CNN+BiGRU</span>
+        </div>
+      </div>
+      <div id="status-pill">
+        <span id="status-dot"></span>
+        <span id="status-label">CONNECTING...</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ─── BODY ──────────────────────────────────────────────── -->
+  <div id="body">
+
+    <!-- LEFT: camera panel -->
+    <div id="left-panel">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="canvas"></canvas>
+      <div id="cam-hud">
+        <div id="face-indicator">
+          <span id="face-dot"></span>
+          <span id="face-label">NO FACE</span>
+        </div>
+        <div id="hud-right">
+          <div id="frame-counter">FRAMES: 0</div>
+          <div id="fps-counter">FPS: —</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: prediction panel -->
+    <div id="right-panel">
+
+      <p class="sv-section-label">Predicted Phrase</p>
+      <div id="phrase">CONNECTING...</div>
+
+      <hr class="sv-divider" />
+
+      <p class="sv-section-label">Raw CTC Output</p>
+      <div id="raw">—</div>
+
+      <hr class="sv-divider" />
+
+      <div id="conf-header">
+        <p class="sv-section-label" style="margin:0;">Model Confidence</p>
+        <span id="conf-pct">0%</span>
+      </div>
+      <div class="conf-bar-track">
+        <div id="conf-bar"></div>
+      </div>
+
+      <hr class="sv-divider" />
+
+      <p class="sv-section-label">Prediction History</p>
+      <div id="history-list"></div>
+
+      <hr class="sv-divider" />
+
+      <button id="replay-btn">🔊 Replay Last Phrase</button>
+
+    </div>
+  </div>
+
+  <script>
+    // ── DOM refs ────────────────────────────────────────────────
+    const video        = document.getElementById('video');
+    const canvas       = document.getElementById('canvas');
+    const ctx          = canvas.getContext('2d');
+    const phraseEl     = document.getElementById('phrase');
+    const rawEl        = document.getElementById('raw');
+    const confBar      = document.getElementById('conf-bar');
+    const confPct      = document.getElementById('conf-pct');
+    const historyList  = document.getElementById('history-list');
+    const replayBtn    = document.getElementById('replay-btn');
+    const statusPill   = document.getElementById('status-pill');
+    const statusLabel  = document.getElementById('status-label');
+    const statusDot    = document.getElementById('status-dot');
+    const leftPanel    = document.getElementById('left-panel');
+    const faceDot      = document.getElementById('face-dot');
+    const faceLabel    = document.getElementById('face-label');
+    const frameCounter = document.getElementById('frame-counter');
+    const fpsCounter   = document.getElementById('fps-counter');
+
+    // ── State ───────────────────────────────────────────────────
+    let lastPhrase   = '';
+    let frameCount   = 0;
+    let fpsFrames    = 0;
+    let ws           = null;
+    let sendInterval = null;
+
+    // ── Camera setup ────────────────────────────────────────────
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 1280, height: 720, facingMode: 'user' },
+          audio: false,
+        });
+        video.style.display = 'none';
+        video.srcObject = stream;
+        video.onloadedmetadata = () => {
+          canvas.width  = video.videoWidth;
+          canvas.height = video.videoHeight;
+          video.play();
+          startFrameLoop();
+        };
+      } catch (err) {
+        phraseEl.textContent = 'CAMERA ERROR';
+        console.error('Camera error:', err);
+      }
+    }
+
+    // ── rAF draw loop — runs every display frame for smooth preview ──
+    function drawLoop() {
+      ctx.save();
+      ctx.scale(-1, 1);
+      ctx.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
+      ctx.restore();
+      requestAnimationFrame(drawLoop);
+    }
+
+    // ── Start continuous draw + 10 fps WS send ───────────────────
+    function startFrameLoop() {
+      drawLoop();   // smooth canvas preview via rAF
+
+      setInterval(() => {
+        if (!ws || ws.readyState !== WebSocket.OPEN) return;
+        frameCount++;
+        fpsFrames++;
+        frameCounter.textContent = `FRAMES: ${frameCount}`;
+        canvas.toBlob(blob => {
+          if (blob) blob.arrayBuffer().then(buf => ws.send(buf));
+        }, 'image/jpeg', 0.7);
+      }, 100);
+    }
+
+
+    // ── FPS counter (updates every 1s) ──────────────────────────
+    setInterval(() => {
+      fpsCounter.textContent = `FPS: ${fpsFrames}`;
+      fpsFrames = 0;
+    }, 1000);
+
+    // ── Phrase animation ────────────────────────────────────────
+    function animatePhrase(text) {
+      phraseEl.classList.remove('animate');
+      void phraseEl.offsetWidth;  // force reflow
+      phraseEl.textContent = text;
+      phraseEl.classList.add('animate');
+    }
+
+    // ── Update confidence bar ───────────────────────────────────
+    function updateConfidence(pct) {
+      confBar.style.width = pct + '%';
+      confPct.textContent = pct + '%';
+    }
+
+    // ── Prepend history pill (max 5) ────────────────────────────
+    function addHistory(phrase) {
+      const pill = document.createElement('div');
+      pill.className = 'hist-pill';
+      pill.textContent = phrase;
+      historyList.prepend(pill);
+      while (historyList.children.length > 5) {
+        historyList.removeChild(historyList.lastChild);
+      }
+    }
+
+    // ── TTS via Web Speech API ───────────────────────────────────
+    function speak(text) {
+      if (!text || !window.speechSynthesis) return;
+      window.speechSynthesis.cancel();
+      const utt = new SpeechSynthesisUtterance(text);
+      utt.rate = 0.95;
+      window.speechSynthesis.speak(utt);
+      utt.onstart = () => {
+        statusPill.classList.add('speaking');
+        statusLabel.textContent = 'SPEAKING';
+      };
+      utt.onend = () => {
+        statusPill.classList.remove('speaking');
+        statusLabel.textContent = 'READY';
+      };
+    }
+
+    // ── Face detection HUD ───────────────────────────────────────
+    function setFaceState(detected) {
+      if (detected) {
+        leftPanel.classList.add('face-detected');
+        leftPanel.classList.remove('no-face');
+        faceDot.classList.add('detected');
+        faceLabel.textContent = 'FACE DETECTED';
+      } else {
+        leftPanel.classList.remove('face-detected');
+        leftPanel.classList.add('no-face');
+        faceDot.classList.remove('detected');
+        faceLabel.textContent = 'NO FACE';
+      }
+    }
+
+    // ── WebSocket connection ─────────────────────────────────────
+    function connectWS() {
+      const wsUrl = `ws://${location.hostname}:8000/ws`;
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        console.log('[WS] Connected');
+        statusLabel.textContent = 'READY';
+        statusPill.classList.remove('speaking');
+        animatePhrase('READY');
+      };
+
+      ws.onmessage = (event) => {
+        let msg;
+        try { msg = JSON.parse(event.data); }
+        catch { return; }
+
+        // Face detection status
+        if (msg.status === 'detected') {
+          setFaceState(true);
+          return;
+        }
+        if (msg.status === 'no_face') {
+          setFaceState(false);
+          return;
+        }
+
+        // Prediction result
+        if (msg.phrase) {
+          lastPhrase = msg.phrase;
+          animatePhrase(msg.phrase);
+          rawEl.textContent = msg.raw || '—';
+          updateConfidence(msg.confidence || 0);
+          addHistory(msg.phrase);
+          speak(msg.phrase);
+        }
+      };
+
+      ws.onclose = () => {
+        console.log('[WS] Disconnected — reconnecting in 2s...');
+        statusLabel.textContent = 'DISCONNECTED';
+        statusPill.classList.remove('speaking');
+        setFaceState(false);
+        setTimeout(connectWS, 2000);
+      };
+
+      ws.onerror = (err) => {
+        console.warn('[WS] Error:', err);
+        ws.close();
+      };
+    }
+
+    // ── Replay button ────────────────────────────────────────────
+    replayBtn.addEventListener('click', () => {
+      if (lastPhrase) speak(lastPhrase);
+    });
+
+    // ── Boot ────────────────────────────────────────────────────
+    startCamera();
+    connectWS();
+  </script>
+</body>
+</html>

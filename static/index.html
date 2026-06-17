@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SilentVoice — Project Hub</title>
+  <meta name="description" content="SilentVoice: Real-Time Visual Speech Recognition using LipNet CNN+BiGRU. Major Project Hub." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:       #f7f4ef;
+      --surface:  #ffffff;
+      --ink:      #1a1714;
+      --ink2:     #4a443d;
+      --ink3:     #8a8078;
+      --border:   #e4dfd8;
+      --accent:   #c9410c;
+      --safe:     #2d6a4f;
+      --blue:     #2c5f8a;
+      --shadow:    0 4px 20px rgba(26,23,20,.08);
+      --shadow-lg: 0 12px 40px rgba(26,23,20,.14);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'DM Sans', sans-serif;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ── Wrapper ────────────────────────────────────────────── */
+    .wrapper {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 3rem 2rem 4rem;
+    }
+
+    /* ── HEADER ─────────────────────────────────────────────── */
+    .site-header {
+      margin-bottom: 3.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 2.5rem;
+    }
+
+    .header-eyebrow {
+      font-size: 0.72rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ink3);
+      font-weight: 500;
+      margin-bottom: 0.6rem;
+    }
+
+    .site-title {
+      font-family: 'DM Serif Display', serif;
+      font-style: italic;
+      font-size: 3.5rem;
+      color: var(--ink);
+      line-height: 1.05;
+      margin-bottom: 0.8rem;
+      letter-spacing: -0.01em;
+    }
+
+    .site-subtitle {
+      font-size: 1.05rem;
+      color: var(--ink2);
+      font-weight: 400;
+      margin-bottom: 1.2rem;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .badge {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 0.75rem;
+      color: var(--ink2);
+      font-weight: 500;
+    }
+
+    /* ── CARDS GRID ──────────────────────────────────────────── */
+    .section-label {
+      font-size: 0.7rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ink3);
+      font-weight: 600;
+      margin-bottom: 1.2rem;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      margin-bottom: 4rem;
+    }
+
+    @media (max-width: 768px) {
+      .cards-grid { grid-template-columns: 1fr; }
+      .site-title { font-size: 2.4rem; }
+      .pipeline-row { flex-wrap: wrap; }
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      display: flex;
+      flex-direction: column;
+    }
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .card-topbar {
+      height: 6px;
+      width: 100%;
+    }
+
+    .card-body {
+      padding: 1.6rem 1.5rem 1.4rem;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    .card-icon {
+      font-size: 2.4rem;
+      margin-bottom: 0.8rem;
+      line-height: 1;
+    }
+
+    .card-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.35rem;
+      color: var(--ink);
+      margin-bottom: 0.6rem;
+      line-height: 1.2;
+    }
+
+    .card-desc {
+      font-size: 0.9rem;
+      color: var(--ink2);
+      line-height: 1.65;
+      margin-bottom: 1.2rem;
+      flex: 1;
+    }
+
+    .card-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 1.4rem;
+    }
+
+    .tag {
+      font-size: 0.7rem;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--ink3);
+      font-weight: 500;
+    }
+
+    .card-btn {
+      display: inline-block;
+      padding: 9px 20px;
+      border-radius: 6px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.88rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: opacity 0.15s ease, transform 0.12s ease;
+      align-self: flex-start;
+    }
+    .card-btn:hover { opacity: 0.88; transform: translateX(2px); }
+
+    /* ── PIPELINE DIAGRAM ────────────────────────────────────── */
+    .pipeline-section {
+      margin-bottom: 4rem;
+    }
+
+    .pipeline-row {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .pipe-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 0.78rem;
+      text-align: center;
+      color: var(--ink2);
+      font-weight: 500;
+      white-space: nowrap;
+      flex-shrink: 0;
+      box-shadow: var(--shadow);
+      line-height: 1.4;
+    }
+
+    .pipe-box .pipe-icon {
+      display: block;
+      font-size: 1.2rem;
+      margin-bottom: 3px;
+    }
+
+    .pipe-arrow {
+      color: var(--ink3);
+      font-size: 1.1rem;
+      padding: 0 8px;
+      flex-shrink: 0;
+      user-select: none;
+    }
+
+    /* ── FOOTER ─────────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding-top: 2rem;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 1.2rem;
+      font-size: 0.82rem;
+      color: var(--ink3);
+    }
+
+    footer strong {
+      color: var(--ink2);
+      font-weight: 600;
+    }
+
+    .footer-group { line-height: 1.8; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+
+    <!-- ── HEADER ─────────────────────────────────────────── -->
+    <header class="site-header">
+      <h1 class="site-title">SilentVoice</h1>
+      <p class="site-subtitle">Real-Time Visual Speech Recognition System — LipNet CNN+BiGRU</p>
+      <div class="badge-row">
+        <span class="badge">Computer Vision</span>
+        <span class="badge">Deep Learning</span>
+        <span class="badge">NLP</span>
+        <span class="badge">Text-to-Speech</span>
+        <span class="badge">Python &middot; PyTorch &middot; FastAPI</span>
+      </div>
+    </header>
+
+    <!-- ── PROJECT CARDS ──────────────────────────────────── -->
+    <p class="section-label">Project Modules</p>
+    <div class="cards-grid">
+
+      <!-- Card 1: Lip Reading -->
+      <div class="card">
+        <div class="card-topbar" style="background:#0a192f;"></div>
+        <div class="card-body">
+          <div class="card-icon">👄</div>
+          <h2 class="card-title">Live Lip Reading</h2>
+          <p class="card-desc">Real-time silent speech recognition using LipNet CNN+BiGRU. Webcam captures lip movements, model predicts text character-by-character, TTS speaks it aloud.</p>
+          <div class="card-tags">
+            <span class="tag">Computer Vision</span>
+            <span class="tag">Deep Learning</span>
+            <span class="tag">WebSocket</span>
+          </div>
+          <a class="card-btn" href="lipread.html" style="background:#0a192f; color:#ffffff;">Launch →</a>
+        </div>
+      </div>
+
+      <!-- Card 2: Viseme Explorer -->
+      <div class="card">
+        <div class="card-topbar" style="background:var(--accent);"></div>
+        <div class="card-body">
+          <div class="card-icon">🔬</div>
+          <h2 class="card-title">Viseme Explorer</h2>
+          <p class="card-desc">Interactive educational tool exploring viseme–phoneme relationships. Understand how distinct mouth shapes map to speech sounds in visual speech recognition.</p>
+          <div class="card-tags">
+            <span class="tag">Linguistics</span>
+            <span class="tag">Interactive</span>
+            <span class="tag">Education</span>
+          </div>
+          <a class="card-btn" href="viseme.html" style="background:var(--accent); color:#ffffff;">Launch →</a>
+        </div>
+      </div>
+
+      <!-- Card 3: AAC Board -->
+      <div class="card">
+        <div class="card-topbar" style="background:var(--safe);"></div>
+        <div class="card-body">
+          <div class="card-icon">💬</div>
+          <h2 class="card-title">AAC Communication Board</h2>
+          <p class="card-desc">Augmentative and Alternative Communication board with categorized phrases, text-to-speech output, and quick-access emergency phrases for non-verbal users.</p>
+          <div class="card-tags">
+            <span class="tag">Accessibility</span>
+            <span class="tag">TTS</span>
+            <span class="tag">Healthcare</span>
+          </div>
+          <a class="card-btn" href="aac.html" style="background:var(--safe); color:#ffffff;">Launch →</a>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── PIPELINE DIAGRAM ───────────────────────────────── -->
+    <div class="pipeline-section">
+      <p class="section-label">System Pipeline</p>
+      <div class="pipeline-row">
+        <div class="pipe-box">
+          <span class="pipe-icon">📷</span>
+          Webcam
+        </div>
+        <span class="pipe-arrow">→</span>
+        <div class="pipe-box">
+          <span class="pipe-icon">🧩</span>
+          Lip Detection
+        </div>
+        <span class="pipe-arrow">→</span>
+        <div class="pipe-box">
+          <span class="pipe-icon">🗂️</span>
+          Frame Buffer<br>
+          <span style="font-size:0.7rem; color:var(--ink3);">30 frames</span>
+        </div>
+        <span class="pipe-arrow">→</span>
+        <div class="pipe-box">
+          <span class="pipe-icon">🧠</span>
+          LipNet Model<br>
+          <span style="font-size:0.7rem; color:var(--ink3);">CNN+BiGRU</span>
+        </div>
+        <span class="pipe-arrow">→</span>
+        <div class="pipe-box">
+          <span class="pipe-icon">🔡</span>
+          CTC Decode<br>
+          <span style="font-size:0.7rem; color:var(--ink3);">28-char vocab</span>
+        </div>
+        <span class="pipe-arrow">→</span>
+        <div class="pipe-box">
+          <span class="pipe-icon">🔊</span>
+          Text-to-Speech
+        </div>
+      </div>
+    </div>
+
+    <!-- ── FOOTER ─────────────────────────────────────────── -->
+    <footer>
+      <div class="footer-group">
+        <strong>Team Members</strong><br>
+        Krish Pitrola &nbsp;·&nbsp; Atharva Palande &nbsp;·&nbsp; Akshata Bhavsar
+      </div>
+     
+    </footer>
+
+  </div>
+</body>
+</html>

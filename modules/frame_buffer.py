@@ -11,7 +11,7 @@ class FrameBuffer:
         self.buffer = deque(maxlen=30)
 
     def add_frame(self, frame):
-        """Resize a lip frame to 112x112 and append it to the buffer."""
+        """Resize a lip frame to 128x64 and append it to the buffer."""
         if frame is None:
             return
 
@@ -23,7 +23,7 @@ class FrameBuffer:
         elif frame.ndim == 3 and frame.shape[2] == 4:
             frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
 
-        resized = cv2.resize(frame, (112, 112), interpolation=cv2.INTER_AREA)
+        resized = cv2.resize(frame, (128, 64), interpolation=cv2.INTER_AREA)
         self.buffer.append(np.array(resized))
 
     def is_full(self):
@@ -31,7 +31,7 @@ class FrameBuffer:
         return len(self.buffer) == 30
 
     def get_sequence(self):
-        """Return a (30, 112, 112, 3) array when the buffer is full, else None."""
+        """Return a (30, 64, 128, 3) array when the buffer is full, else None."""
         if not self.is_full():
             return None
 

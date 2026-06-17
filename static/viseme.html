@@ -1,0 +1,2540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Viseme Explorer — SilentVoice</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+/* ─────────────────────────── RESET + TOKENS ─────────────────────────── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #f7f4ef;
+  --surface: #ffffff;
+  --surface2: #f0ede8;
+  --ink: #1a1714;
+  --ink2: #4a443d;
+  --ink3: #8a8078;
+  --ink4: #b8b0a8;
+  --border: #e4dfd8;
+  --border2: #cfc8bf;
+
+  --accent: #c9410c;        /* burnt orange — VSR danger/ambiguity */
+  --accent-bg: #fdf2ee;
+  --accent-border: #f0c4b2;
+
+  --safe: #2d6a4f;          /* green — distinguishable */
+  --safe-bg: #eef6f1;
+  --safe-border: #b0d9c0;
+
+  --blue: #2c5f8a;
+  --blue-bg: #eef4f9;
+  --blue-border: #b0cfe8;
+
+  --gold: #b8860b;
+  --gold-bg: #fdf8ee;
+
+  --shadow-sm: 0 1px 4px rgba(26,23,20,.06), 0 1px 2px rgba(26,23,20,.04);
+  --shadow: 0 4px 20px rgba(26,23,20,.08), 0 1px 6px rgba(26,23,20,.05);
+  --shadow-lg: 0 12px 40px rgba(26,23,20,.12), 0 4px 12px rgba(26,23,20,.06);
+
+  --r: 14px;
+  --r-sm: 8px;
+  --r-lg: 20px;
+}
+
+html, body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.55;
+  font-size: 15px;
+  min-height: 100vh;
+}
+
+/* ─────────────────────────── HEADER ─────────────────────────── */
+.site-header {
+  background: var(--ink);
+  padding: 0 40px;
+}
+.header-inner {
+  max-width: 1040px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 0;
+  gap: 20px;
+}
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.logo-mark {
+  width: 38px;
+  height: 38px;
+  background: var(--accent);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.logo-mark svg { display: block; }
+.logo-name {
+  font-family: 'DM Serif Display', serif;
+  font-size: 20px;
+  color: #fff;
+  line-height: 1;
+}
+.logo-name span {
+  display: block;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.45);
+  margin-top: 2px;
+}
+.header-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.header-pill {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .04em;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,.14);
+  color: rgba(255,255,255,.5);
+}
+
+/* ─────────────────────────── HERO SECTION ─────────────────────────── */
+.hero {
+  background: var(--ink);
+  padding: 52px 40px 58px;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+  position: relative;
+  overflow: hidden;
+}
+.hero::after {
+  content: '';
+  position: absolute;
+  right: -120px;
+  top: -120px;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(201,65,12,.12) 0%, transparent 65%);
+  pointer-events: none;
+}
+.hero-inner {
+  max-width: 1040px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 40px;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}
+.hero-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 16px;
+  background: rgba(201,65,12,.12);
+  border: 1px solid rgba(201,65,12,.25);
+  border-radius: 20px;
+  padding: 5px 12px;
+}
+.hero-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+.hero-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 52px;
+  color: #fff;
+  line-height: 1.02;
+  letter-spacing: -.02em;
+  margin-bottom: 16px;
+}
+.hero-title em { color: var(--accent); font-style: normal; }
+.hero-desc {
+  font-size: 15px;
+  color: rgba(255,255,255,.52);
+  max-width: 500px;
+  line-height: 1.75;
+  font-weight: 300;
+}
+.hero-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: var(--r);
+  padding: 24px 28px;
+  min-width: 200px;
+  text-align: center;
+}
+.hero-stat { padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,.07); }
+.hero-stat:last-child { border-bottom: none; }
+.hero-stat-num {
+  font-family: 'DM Serif Display', serif;
+  font-size: 34px;
+  color: #fff;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.hero-stat-num span { color: var(--accent); }
+.hero-stat-label {
+  font-size: 11px;
+  color: rgba(255,255,255,.38);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+/* ─────────────────────────── PIPELINE STRIP ─────────────────────────── */
+.pipeline {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 32px 40px;
+}
+.pipeline-inner {
+  max-width: 1040px;
+  margin: 0 auto;
+}
+.section-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--ink3);
+  margin-bottom: 18px;
+}
+.pipeline-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.pipe-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px 20px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  position: relative;
+}
+.pipe-step::after {
+  content: '→';
+  position: absolute;
+  right: -14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink4);
+  font-size: 14px;
+  z-index: 1;
+}
+.pipe-step:last-child::after { display: none; }
+.pipe-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 17px;
+}
+.pipe-text {}
+.pipe-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 3px;
+}
+.pipe-desc { font-size: 12px; color: var(--ink3); line-height: 1.55; }
+
+/* ─────────────────────────── MAIN EXPLORER AREA ─────────────────────────── */
+.explorer {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 36px 40px 60px;
+}
+
+/* ── WORD LOOKUP TOOL ── */
+.lookup-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 24px 28px;
+  margin-bottom: 28px;
+  box-shadow: var(--shadow-sm);
+}
+.lookup-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.lookup-header-icon {
+  width: 32px;
+  height: 32px;
+  background: var(--blue-bg);
+  border: 1px solid var(--blue-border);
+  border-radius: var(--r-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+.lookup-header-text {}
+.lookup-title { font-size: 14px; font-weight: 600; color: var(--ink); }
+.lookup-subtitle { font-size: 12px; color: var(--ink3); }
+
+.lookup-input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.lookup-input {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  border-radius: var(--r-sm);
+  padding: 10px 16px;
+  color: var(--ink);
+  outline: none;
+  width: 200px;
+  transition: border-color .2s;
+  font-weight: 500;
+}
+.lookup-input:focus { border-color: var(--blue); }
+.lookup-input::placeholder { color: var(--ink4); font-weight: 300; }
+.try-label { font-size: 12px; color: var(--ink4); margin-right: 2px; }
+.word-chip {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 20px;
+  color: var(--ink2);
+  cursor: pointer;
+  transition: all .15s;
+  font-family: 'DM Sans', sans-serif;
+}
+.word-chip:hover { background: var(--ink); color: #fff; border-color: var(--ink); }
+.word-chip.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+/* ── SEQUENCE DISPLAY ── */
+.seq-result {
+  display: none;
+  padding-top: 14px;
+  margin-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.seq-result.visible { display: block; }
+.seq-result-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink3);
+  margin-bottom: 10px;
+}
+.seq-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.seq-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 9px 14px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: all .15s;
+  min-width: 56px;
+}
+.seq-chip:hover, .seq-chip.sel { background: var(--ink); border-color: var(--ink); }
+.seq-chip.ambiguous { background: var(--accent-bg); border-color: var(--accent-border); }
+.seq-chip.ambiguous:hover, .seq-chip.ambiguous.sel { background: var(--ink); border-color: var(--ink); }
+.sc-phoneme {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  font-family: 'DM Serif Display', serif;
+}
+.sc-viseme {
+  font-size: 10px;
+  color: var(--ink4);
+  font-weight: 500;
+  letter-spacing: .05em;
+}
+.seq-chip:hover .sc-phoneme, .seq-chip.sel .sc-phoneme { color: #fff; }
+.seq-chip:hover .sc-viseme, .seq-chip.sel .sc-viseme { color: rgba(255,255,255,.5); }
+.sc-warn { font-size: 9px; color: var(--accent); margin-top: 1px; }
+.seq-chip:hover .sc-warn, .seq-chip.sel .sc-warn { color: rgba(255,200,180,.8); }
+
+/* ── CONTROLS ROW ── */
+.controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.filter-group { display: flex; gap: 6px; flex-wrap: wrap; }
+.filter-btn {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 20px;
+  color: var(--ink3);
+  cursor: pointer;
+  transition: all .15s;
+  font-family: 'DM Sans', sans-serif;
+  letter-spacing: .02em;
+}
+.filter-btn:hover { border-color: var(--ink2); color: var(--ink); }
+.filter-btn.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+.filter-btn.warn.on { background: var(--accent); border-color: var(--accent); }
+.grid-meta { font-size: 12px; color: var(--ink4); font-weight: 400; }
+
+/* ── MAIN TWO-COL LAYOUT ── */
+.explorer-layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 20px;
+  align-items: start;
+}
+
+/* ── VISEME GRID ── */
+.vis-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(106px, 1fr));
+  gap: 10px;
+}
+.v-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r);
+  padding: 10px 8px 9px;
+  cursor: pointer;
+  transition: all .18s;
+  text-align: center;
+  position: relative;
+  user-select: none;
+  overflow: hidden;
+}
+.v-card:hover {
+  border-color: var(--ink);
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
+}
+.v-card.selected {
+  border-color: var(--ink);
+  border-width: 2px;
+  box-shadow: var(--shadow-lg);
+  background: var(--ink);
+}
+.v-card.highlighted { border-color: var(--gold); border-width: 2px; background: var(--gold-bg); }
+.v-card.ambiguous { border-style: dashed; border-color: var(--accent-border); background: var(--accent-bg); }
+.v-card.ambiguous.selected { background: var(--ink); border-style: solid; }
+.v-card.ambiguous.highlighted { background: var(--gold-bg); border-style: solid; border-color: var(--gold); }
+
+.v-warn-dot {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.v-id {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  color: var(--ink4);
+  margin-bottom: 6px;
+  font-family: 'DM Sans', sans-serif;
+}
+.v-card.selected .v-id { color: rgba(255,255,255,.4); }
+.v-mouth { margin: 0 auto 6px; display: block; border-radius: 6px; }
+.d-mouth-box .v-mouth { border-radius: 12px; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.18)); }
+.v-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: .03em;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.v-type {
+  font-size: 9px;
+  color: var(--ink4);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.v-card.selected .v-label, .v-card.selected .v-type { color: rgba(255,255,255,.85); }
+.v-card.selected .v-type { color: rgba(255,255,255,.45); }
+
+/* ── DETAIL PANEL ── */
+.detail-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 24px;
+  box-shadow: var(--shadow);
+  position: sticky;
+  top: 20px;
+}
+.d-empty {
+  text-align: center;
+  padding: 44px 20px;
+}
+.d-empty-icon { font-size: 48px; margin-bottom: 12px; display: block; opacity: .3; }
+.d-empty-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink3);
+  margin-bottom: 6px;
+}
+.d-empty-sub { font-size: 12px; color: var(--ink4); line-height: 1.6; }
+
+.d-id {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--ink4);
+  margin-bottom: 4px;
+}
+.d-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 24px;
+  color: var(--ink);
+  margin-bottom: 10px;
+  line-height: 1.15;
+}
+.d-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+.d-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 11px;
+  border-radius: 20px;
+  letter-spacing: .03em;
+}
+.d-badge.ambig { background: var(--accent-bg); color: var(--accent); border: 1px solid var(--accent-border); }
+.d-badge.safe { background: var(--safe-bg); color: var(--safe); border: 1px solid var(--safe-border); }
+.d-badge.type { background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-border); }
+
+.d-mouth-box {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 16px 10px 12px;
+  margin-bottom: 16px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.d-mouth-label {
+  font-size: 11px;
+  color: var(--ink4);
+  margin-top: 8px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-weight: 500;
+}
+
+.d-phonemes-wrap { margin-bottom: 14px; }
+.d-phonemes-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink4);
+  margin-bottom: 7px;
+}
+.d-phonemes { display: flex; flex-wrap: wrap; gap: 5px; }
+.d-ph {
+  background: var(--ink);
+  color: #fff;
+  font-family: 'DM Serif Display', serif;
+  font-size: 13px;
+  padding: 4px 11px;
+  border-radius: 6px;
+}
+
+.d-desc {
+  font-size: 13px;
+  color: var(--ink2);
+  line-height: 1.7;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  background: var(--surface2);
+  border-radius: var(--r-sm);
+  border-left: 3px solid var(--border2);
+}
+.d-badge.ambig ~ .d-desc-wrap .d-desc { border-left-color: var(--accent); }
+
+.d-words-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink4);
+  margin-bottom: 8px;
+}
+.d-words { display: flex; flex-wrap: wrap; gap: 5px; }
+.d-word {
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  color: var(--ink2);
+  cursor: pointer;
+  transition: all .14s;
+}
+.d-word:hover { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+/* ── LEGEND ── */
+.legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.leg-item { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--ink3); }
+.leg-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+/* ── AMBIGUITY INSIGHT SECTION ── */
+.insight-section {
+  background: var(--ink);
+  border-radius: var(--r-lg);
+  padding: 32px;
+  margin-top: 28px;
+  position: relative;
+  overflow: hidden;
+}
+.insight-section::before {
+  content: '';
+  position: absolute;
+  right: -60px; bottom: -60px;
+  width: 260px; height: 260px;
+  background: radial-gradient(circle, rgba(201,65,12,.18) 0%, transparent 65%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+.insight-inner { position: relative; z-index: 1; }
+.insight-eyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+.insight-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 22px;
+  color: #fff;
+  margin-bottom: 8px;
+}
+.insight-desc {
+  font-size: 13px;
+  color: rgba(255,255,255,.5);
+  line-height: 1.7;
+  margin-bottom: 22px;
+  max-width: 640px;
+  font-weight: 300;
+}
+.insight-pairs { display: flex; flex-wrap: wrap; gap: 8px; }
+.i-pair {
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: var(--r-sm);
+  padding: 10px 16px;
+  transition: all .15s;
+}
+.i-pair:hover { background: rgba(201,65,12,.14); border-color: rgba(201,65,12,.3); }
+.i-pair-ph {
+  font-family: 'DM Serif Display', serif;
+  font-size: 15px;
+  color: #fff;
+  margin-bottom: 2px;
+}
+.i-pair-why { font-size: 11px; color: rgba(255,255,255,.38); }
+
+/* ─────────────────────────── MOUTH SVG SYSTEM ─────────────────────────── */
+/* Mouths are built purely via JS/SVG — see renderMouth() */
+
+/* ── VISEME CARD SPEAK BUTTON ── */
+.v-speak-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 6px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--border2);
+  background: var(--surface2);
+  color: var(--ink3);
+  font-size: 10px;
+  cursor: pointer;
+  transition: all .15s;
+  font-family: 'DM Sans', sans-serif;
+  line-height: 1;
+}
+.v-speak-btn:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  transform: scale(1.12);
+}
+.v-speak-btn.speaking {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  animation: pulse-vspeak .55s ease-in-out infinite;
+}
+.v-card.selected .v-speak-btn {
+  background: rgba(255,255,255,.1);
+  border-color: rgba(255,255,255,.2);
+  color: rgba(255,255,255,.65);
+}
+.v-card.selected .v-speak-btn:hover,
+.v-card.selected .v-speak-btn.speaking {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+@keyframes pulse-vspeak {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.18); }
+}
+
+/* ── SPEAK BUTTON (word lookup) ── */
+.speak-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 16px;
+  border-radius: var(--r-sm);
+  border: 1.5px solid var(--blue-border);
+  background: var(--blue-bg);
+  color: var(--blue);
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.speak-btn:hover { background: var(--blue); color: #fff; border-color: var(--blue); }
+.speak-btn:disabled { opacity: .45; cursor: default; }
+.speak-btn.speaking { background: var(--blue); color: #fff; border-color: var(--blue); }
+
+/* ── AUTOCOMPLETE ── */
+.lookup-input-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+.autocomplete-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1.5px solid var(--border2);
+  border-radius: var(--r-sm);
+  box-shadow: var(--shadow);
+  z-index: 100;
+  max-height: 200px;
+  overflow-y: auto;
+  display: none;
+}
+.autocomplete-list.open { display: block; }
+.ac-item {
+  padding: 9px 14px;
+  font-size: 13px;
+  color: var(--ink2);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background .1s;
+}
+.ac-item:last-child { border-bottom: none; }
+.ac-item:hover, .ac-item.focused { background: var(--surface2); color: var(--ink); }
+.ac-item-ph {
+  font-size: 10px;
+  color: var(--ink4);
+  letter-spacing: .03em;
+}
+
+/* ── CONFUSABLE PAIRS SECTION ── */
+.confusable-section {
+  margin-top: 28px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 32px;
+  box-shadow: var(--shadow-sm);
+}
+.confusable-eyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+.confusable-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 22px;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+.confusable-desc {
+  font-size: 13px;
+  color: var(--ink3);
+  line-height: 1.7;
+  margin-bottom: 24px;
+  max-width: 600px;
+  font-weight: 300;
+}
+.confusable-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+.cf-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 16px 18px;
+  transition: border-color .15s, box-shadow .15s;
+  cursor: pointer;
+}
+.cf-card:hover {
+  border-color: var(--accent-border);
+  box-shadow: var(--shadow-sm);
+  background: var(--accent-bg);
+}
+.cf-words {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 9px;
+}
+.cf-word {
+  font-family: 'DM Serif Display', serif;
+  font-size: 20px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 5px 14px;
+  cursor: pointer;
+  transition: all .14s;
+  white-space: nowrap;
+}
+.cf-word:hover { background: var(--ink); color: #fff; border-color: var(--ink); }
+.cf-vs {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink4);
+  letter-spacing: .08em;
+  flex-shrink: 0;
+}
+.cf-why {
+  font-size: 12px;
+  color: var(--ink3);
+  line-height: 1.55;
+}
+.cf-speak {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--blue);
+  background: var(--blue-bg);
+  border: 1px solid var(--blue-border);
+  border-radius: 20px;
+  padding: 3px 9px;
+  margin-top: 8px;
+  cursor: pointer;
+  transition: all .14s;
+  font-family: 'DM Sans', sans-serif;
+}
+.cf-speak:hover { background: var(--blue); color: #fff; border-color: var(--blue); }
+
+/* ─────────────────────────── RESPONSIVE ─────────────────────────── */
+@media (max-width: 760px) {
+  .hero-inner { grid-template-columns: 1fr; }
+  .hero-stats { flex-direction: row; gap: 0; }
+  .pipeline-steps { grid-template-columns: 1fr; }
+  .pipe-step::after { display: none; }
+  .explorer-layout { grid-template-columns: 1fr; }
+  .detail-panel { position: static; }
+  .site-header { padding: 0 20px; }
+  .hero, .pipeline, .explorer { padding-left: 20px; padding-right: 20px; }
+  .hero-title { font-size: 38px; }
+}
+
+/* ─────────────────────────── ANIMATIONS ─────────────────────────── */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.detail-panel > div { animation: fadeIn .2s ease; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════
+     HEADER
+═══════════════════════════════════════════════════ -->
+<header class="site-header">
+  <div class="header-inner">
+    <div class="header-left">
+      <div class="logo-mark">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <ellipse cx="10" cy="13" rx="6" ry="4.5" fill="rgba(255,255,255,.9)"/>
+          <path d="M4.5 13 Q10 7 15.5 13" stroke="rgba(255,255,255,.5)" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="logo-name">
+        SilentVoice
+        <span>Viseme Explorer · TY-A-40 / TY-A-45</span>
+      </div>
+    </div>
+    <div class="header-pills">
+      <div class="header-pill">MediaPipe</div>
+      <div class="header-pill">DistilBERT</div>
+      <div class="header-pill">Visual Speech Recognition</div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════
+     HERO
+═══════════════════════════════════════════════════ -->
+<section class="hero">
+  <div class="hero-inner">
+    <div>
+      <div class="hero-tag">
+        <div class="hero-dot"></div>
+        Interactive Educational Tool
+      </div>
+      <h1 class="hero-title">
+        Viseme<br>
+        <em>Explorer</em>
+      </h1>
+      <p class="hero-desc">
+        A <strong style="color:rgba(255,255,255,.8);font-weight:500">viseme</strong> is the visual shape your lips make when producing a sound.
+        Explore all 18 viseme groups, discover which sounds look completely identical on the lips,
+        and understand why lip reading — and therefore Visual Speech Recognition — is fundamentally hard.
+      </p>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="hero-stat-num"><span>18</span></div>
+        <div class="hero-stat-label">Viseme groups</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-num"><span>44</span></div>
+        <div class="hero-stat-label">English phonemes</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-num"><span>9</span></div>
+        <div class="hero-stat-label">Ambiguous groups</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════
+     PIPELINE
+═══════════════════════════════════════════════════ -->
+<section class="pipeline">
+  <div class="pipeline-inner">
+    <div class="section-label">How SilentVoice works</div>
+    <div class="pipeline-steps">
+      <div class="pipe-step">
+        <div class="pipe-icon" style="background:#eef4f9;border:1px solid #b0cfe8;">👁</div>
+        <div class="pipe-text">
+          <div class="pipe-title">Lip Detection</div>
+          <div class="pipe-desc">MediaPipe extracts 20 lip landmark points per frame from a live webcam feed.</div>
+        </div>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-icon" style="background:#fdf2ee;border:1px solid #f0c4b2;">🧠</div>
+        <div class="pipe-text">
+          <div class="pipe-title">VSR Model</div>
+          <div class="pipe-desc">A sequence of lip frames is classified into the most likely phoneme at each timestep.</div>
+        </div>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-icon" style="background:#eef6f1;border:1px solid #b0d9c0;">✅</div>
+        <div class="pipe-text">
+          <div class="pipe-title">DistilBERT Correction</div>
+          <div class="pipe-desc">Ambiguous predictions (p/b/m) are resolved using sentence context. Output goes to TTS.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════
+     EXPLORER
+═══════════════════════════════════════════════════ -->
+<main class="explorer">
+
+  <!-- ── WORD LOOKUP ── -->
+  <div class="lookup-card">
+    <div class="lookup-header">
+      <div class="lookup-header-icon">🔍</div>
+      <div class="lookup-header-text">
+        <div class="lookup-title">Word → Viseme Sequence</div>
+        <div class="lookup-subtitle">Type any word from the 300+ word dictionary to see its lip shapes</div>
+      </div>
+    </div>
+
+    <div class="lookup-input-row">
+      <div class="lookup-input-wrap">
+        <input class="lookup-input" id="word-input" type="text" placeholder="e.g. baby, phone, speech…" maxlength="24" autocomplete="off">
+        <div class="autocomplete-list" id="autocomplete-list"></div>
+      </div>
+      <span class="try-label">Try:</span>
+      <button class="word-chip" onclick="tryWord('baby')">baby</button>
+      <button class="word-chip" onclick="tryWord('speech')">speech</button>
+      <button class="word-chip" onclick="tryWord('mother')">mother</button>
+      <button class="word-chip" onclick="tryWord('phone')">phone</button>
+      <button class="word-chip" onclick="tryWord('visible')">visible</button>
+      <button class="word-chip" onclick="tryWord('think')">think</button>
+    </div>
+
+    <div class="seq-result" id="seq-result">
+      <div class="seq-result-label" id="seq-label">Sequence</div>
+      <div class="seq-chips" id="seq-chips"></div>
+    </div>
+  </div>
+
+  <!-- ── CONTROLS ── -->
+  <div class="controls-row">
+    <div class="filter-group">
+      <button class="filter-btn on" onclick="setFilter('all', this)">All 18</button>
+      <button class="filter-btn warn" onclick="setFilter('ambig', this)">⚠ Ambiguous only</button>
+      <button class="filter-btn" onclick="setFilter('vowel', this)">Vowels</button>
+      <button class="filter-btn" onclick="setFilter('consonant', this)">Consonants</button>
+    </div>
+    <div class="grid-meta" id="grid-meta">Showing 18 visemes</div>
+  </div>
+
+  <!-- ── GRID + DETAIL PANEL ── -->
+  <div class="explorer-layout">
+    <div>
+      <div class="vis-grid" id="vis-grid"></div>
+
+      <!-- Legend -->
+      <div class="legend">
+        <div class="leg-item">
+          <div class="leg-swatch" style="background:var(--surface);border:1.5px solid var(--border);"></div>
+          Standard viseme
+        </div>
+        <div class="leg-item">
+          <div class="leg-swatch" style="background:var(--accent-bg);border:1.5px dashed var(--accent-border);"></div>
+          Visually ambiguous
+        </div>
+        <div class="leg-item">
+          <div class="leg-swatch" style="background:var(--gold-bg);border:2px solid var(--gold);"></div>
+          In current word
+        </div>
+      </div>
+    </div>
+
+    <!-- Detail panel -->
+    <div class="detail-panel" id="detail-panel">
+      <div class="d-empty">
+        <span class="d-empty-icon">👄</span>
+        <div class="d-empty-title">Select a viseme</div>
+        <div class="d-empty-sub">Click any card in the grid to see<br>its lip shape, phonemes, and examples.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── WHY VSR IS HARD ── -->
+  <div class="insight-section">
+    <div class="insight-inner">
+      <div class="insight-eyebrow">Why lip reading is hard</div>
+      <div class="insight-title">These sounds look completely identical</div>
+      <div class="insight-desc">
+        No camera resolution helps here — /p/, /b/, and /m/ all produce the exact same complete lip closure.
+        A human lip reader must infer the correct sound from context alone. This is precisely why SilentVoice
+        doesn't stop at the VSR model: DistilBERT reads the predicted sequence and resolves ambiguity the way a brain does.
+      </div>
+      <div class="insight-pairs" id="insight-pairs"></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ═══════════════════════════════════════════════════
+     DATA + LOGIC
+═══════════════════════════════════════════════════ -->
+<script>
+/* ── VISEME DATA ── */
+const VISEMES = [
+  {
+    id: 0, label: 'Silence / Rest', phonemes: ['—'], type: 'consonant', ambig: false,
+    desc: 'Neutral resting position. Lips are gently closed with no airflow or muscle tension. The baseline state between all sounds.',
+    words: ['(pause)'],
+    mouth: { shape: 'closed', open: 0, round: false }
+  },
+  {
+    id: 1, label: 'P · B · M', phonemes: ['p', 'b', 'm'], type: 'consonant', ambig: true,
+    desc: 'Complete bilabial closure — both lips pressed fully together. /p/, /b/, and /m/ are impossible to tell apart by sight alone. This single ambiguity is the most common error in lip reading.',
+    words: ['apple', 'baby', 'mama', 'map', 'bump'],
+    mouth: { shape: 'pressed', open: 0, round: false }
+  },
+  {
+    id: 2, label: 'F · V', phonemes: ['f', 'v'], type: 'consonant', ambig: true,
+    desc: 'Upper teeth lightly rest on the lower lip (labiodental contact). The difference between /f/ and /v/ is voicing — invisible from outside.',
+    words: ['face', 'very', 'phone', 'voice', 'fever'],
+    mouth: { shape: 'bite', open: 0, round: false }
+  },
+  {
+    id: 3, label: 'TH', phonemes: ['θ', 'ð'], type: 'consonant', ambig: false,
+    desc: 'Tongue tip protrudes slightly between or near the teeth. Usually the one clearly distinguishable feature — the tongue tip is visible.',
+    words: ['the', 'think', 'that', 'three', 'mouth'],
+    mouth: { shape: 'tongue', open: 0.2, round: false }
+  },
+  {
+    id: 4, label: 'D · T · N', phonemes: ['d', 't', 'n'], type: 'consonant', ambig: true,
+    desc: 'Tongue touches the ridge behind the upper teeth (alveolar). Lips are slightly apart but all the action is internal — nothing to see from the front.',
+    words: ['done', 'take', 'night', 'dental', 'note'],
+    mouth: { shape: 'slight', open: 0.25, round: false }
+  },
+  {
+    id: 5, label: 'K · G · NG', phonemes: ['k', 'g', 'ŋ'], type: 'consonant', ambig: true,
+    desc: 'Tongue contacts the soft palate at the very back of the mouth. Virtually no visible lip movement at all — completely invisible.',
+    words: ['cat', 'go', 'sing', 'king', 'gecko'],
+    mouth: { shape: 'slight', open: 0.3, round: false }
+  },
+  {
+    id: 6, label: 'CH · SH · J', phonemes: ['tʃ', 'ʃ', 'dʒ', 'ʒ'], type: 'consonant', ambig: false,
+    desc: 'Lips push forward into a distinctive round pucker — the "shush" shape. One of the most recognisable visemes; clearly different from other consonants.',
+    words: ['cheese', 'she', 'judge', 'measure', 'shop'],
+    mouth: { shape: 'pucker', open: 0.15, round: true }
+  },
+  {
+    id: 7, label: 'S · Z', phonemes: ['s', 'z'], type: 'consonant', ambig: true,
+    desc: 'Teeth draw close together with lips slightly spread — a narrow slit shape. Visually similar to several other consonants at speed.',
+    words: ['see', 'zero', 'hiss', 'buzz', 'sizzle'],
+    mouth: { shape: 'slit', open: 0.1, round: false }
+  },
+  {
+    id: 8, label: 'R', phonemes: ['r'], type: 'consonant', ambig: false,
+    desc: 'Lips round inward with a characteristic draw-back. One of the more recognisable consonant visemes due to its unique inward-rounding shape.',
+    words: ['red', 'rain', 'carry', 'road', 'mirror'],
+    mouth: { shape: 'r', open: 0.3, round: true }
+  },
+  {
+    id: 9, label: 'L', phonemes: ['l'], type: 'consonant', ambig: false,
+    desc: 'Lips slightly parted in a relaxed neutral position. The tongue tip rises to touch behind the upper teeth — invisible from the front.',
+    words: ['lip', 'love', 'hello', 'well', 'lemon'],
+    mouth: { shape: 'neutral', open: 0.3, round: false }
+  },
+  {
+    id: 10, label: 'W · WH', phonemes: ['w', 'ʍ'], type: 'consonant', ambig: true,
+    desc: 'Strong lip rounding with noticeable protrusion — the most rounded consonant viseme. Easily confused with the "oo" vowel at a glance.',
+    words: ['way', 'where', 'away', 'when', 'wine'],
+    mouth: { shape: 'w', open: 0.1, round: true }
+  },
+  {
+    id: 11, label: 'H', phonemes: ['h'], type: 'consonant', ambig: true,
+    desc: 'The lips adopt whatever shape the following vowel needs. The /h/ sound itself is invisible — you only see the vowel after it. Completely context-dependent.',
+    words: ['hat', 'he', 'who', 'ahead', 'help'],
+    mouth: { shape: 'neutral', open: 0.4, round: false }
+  },
+  {
+    id: 12, label: 'EE · IH', phonemes: ['iː', 'ɪ'], type: 'vowel', ambig: false,
+    desc: 'Lips spread wide in a "smile" shape — the most spread viseme. Clearly distinct from all rounded vowels; one of the easiest to identify.',
+    words: ['see', 'bit', 'feed', 'him', 'flee'],
+    mouth: { shape: 'ee', open: 0.35, round: false }
+  },
+  {
+    id: 13, label: 'AE · EH', phonemes: ['æ', 'ɛ'], type: 'vowel', ambig: true,
+    desc: 'Mouth opens to a moderate degree with lips relaxed and spread. Easily confused with similar mid-open shapes; the degree of opening varies by speaker.',
+    words: ['cat', 'bed', 'man', 'pen', 'task'],
+    mouth: { shape: 'midopen', open: 0.5, round: false }
+  },
+  {
+    id: 14, label: 'AH · UH', phonemes: ['ɑː', 'ʌ'], type: 'vowel', ambig: false,
+    desc: 'Wide open jaw — the largest mouth aperture in English. The classic "say ah" at the doctor position. Unmistakeable at normal distance.',
+    words: ['father', 'cup', 'hot', 'hut', 'palm'],
+    mouth: { shape: 'open', open: 0.85, round: false }
+  },
+  {
+    id: 15, label: 'OH · AW', phonemes: ['oʊ', 'ɔː'], type: 'vowel', ambig: true,
+    desc: 'Rounded and moderately open. The gradual rounding transition is sometimes visible as the diphthong glides, but degree varies widely.',
+    words: ['go', 'law', 'boat', 'call', 'shore'],
+    mouth: { shape: 'roundmid', open: 0.45, round: true }
+  },
+  {
+    id: 16, label: 'OO · UH', phonemes: ['uː', 'ʊ'], type: 'vowel', ambig: true,
+    desc: 'Strong lip rounding with minimal jaw opening. At a distance, easily confused with the /w/ consonant shape.',
+    words: ['food', 'book', 'do', 'put', 'moon'],
+    mouth: { shape: 'w', open: 0.2, round: true }
+  },
+  {
+    id: 17, label: 'Diphthongs', phonemes: ['eɪ', 'aɪ', 'ɔɪ'], type: 'vowel', ambig: true,
+    desc: 'The mouth glides through two distinct shapes. The movement is visible but highly variable across speakers and speaking rates, making it hard to classify.',
+    words: ['say', 'my', 'boy', 'day', 'fine'],
+    mouth: { shape: 'midopen', open: 0.55, round: false }
+  },
+];
+
+/* ── AMBIGUITY PAIRS (insight section) ── */
+const PAIRS = [
+  { ph: 'p · b · m', why: 'Identical bilabial closure' },
+  { ph: 'f · v',     why: 'Same labiodental contact' },
+  { ph: 'd · t · n', why: 'Alveolar — tongue is hidden' },
+  { ph: 'k · g · ng',why: 'Velar — no lip movement at all' },
+  { ph: 's · z',     why: 'Same slit-teeth shape' },
+  { ph: 'oo · w',    why: 'Both strongly rounded' },
+  { ph: 'oh · aw',   why: 'Similar rounding degree' },
+  { ph: 'ae · eh',   why: 'Near-identical jaw height' },
+  { ph: 'h',         why: 'Invisible — borrows next vowel shape' },
+];
+
+/* ── WORD MAP (phoneme sequences) — 300+ words ── */
+const WORD_MAP = {
+  /* ── Common words ── */
+  a:        ['eɪ'],
+  am:       ['æ','m'],
+  an:       ['æ','n'],
+  and:      ['æ','n','d'],
+  are:      ['ɑː','r'],
+  as:       ['æ','z'],
+  at:       ['æ','t'],
+  be:       ['b','iː'],
+  but:      ['b','ʌ','t'],
+  by:       ['b','aɪ'],
+  do:       ['d','uː'],
+  for:      ['f','ɔː','r'],
+  from:     ['f','r','ʌ','m'],
+  get:      ['g','ɛ','t'],
+  go:       ['g','oʊ'],
+  got:      ['g','ɔː','t'],
+  had:      ['h','æ','d'],
+  has:      ['h','æ','z'],
+  have:     ['h','æ','v'],
+  he:       ['h','iː'],
+  her:      ['h','ɜː','r'],
+  him:      ['h','ɪ','m'],
+  his:      ['h','ɪ','z'],
+  how:      ['h','aʊ'],
+  if:       ['ɪ','f'],
+  in:       ['ɪ','n'],
+  is:       ['ɪ','z'],
+  it:       ['ɪ','t'],
+  its:      ['ɪ','t','s'],
+  just:     ['dʒ','ʌ','s','t'],
+  know:     ['n','oʊ'],
+  let:      ['l','ɛ','t'],
+  like:     ['l','aɪ','k'],
+  made:     ['m','eɪ','d'],
+  make:     ['m','eɪ','k'],
+  me:       ['m','iː'],
+  more:     ['m','ɔː','r'],
+  my:       ['m','aɪ'],
+  new:      ['n','uː'],
+  no:       ['n','oʊ'],
+  not:      ['n','ɔː','t'],
+  now:      ['n','aʊ'],
+  of:       ['ʌ','v'],
+  on:       ['ɔː','n'],
+  one:      ['w','ʌ','n'],
+  only:     ['oʊ','n','l','iː'],
+  or:       ['ɔː','r'],
+  our:      ['aʊ','r'],
+  out:      ['aʊ','t'],
+  see:      ['s','iː'],
+  she:      ['ʃ','iː'],
+  so:       ['s','oʊ'],
+  some:     ['s','ʌ','m'],
+  than:     ['ð','æ','n'],
+  that:     ['ð','æ','t'],
+  the:      ['ð','ɪ'],
+  their:    ['ð','ɛ','r'],
+  them:     ['ð','ɛ','m'],
+  then:     ['ð','ɛ','n'],
+  there:    ['ð','ɛ','r'],
+  these:    ['ð','iː','z'],
+  they:     ['ð','eɪ'],
+  this:     ['ð','ɪ','s'],
+  time:     ['t','aɪ','m'],
+  to:       ['t','uː'],
+  two:      ['t','uː'],
+  up:       ['ʌ','p'],
+  us:       ['ʌ','s'],
+  use:      ['juː','z'],
+  was:      ['w','ɔː','z'],
+  way:      ['w','eɪ'],
+  we:       ['w','iː'],
+  well:     ['w','ɛ','l'],
+  were:     ['w','ɜː','r'],
+  what:     ['w','ʌ','t'],
+  when:     ['w','ɛ','n'],
+  who:      ['h','uː'],
+  will:     ['w','ɪ','l'],
+  with:     ['w','ɪ','ð'],
+  would:    ['w','ʊ','d'],
+  you:      ['j','uː'],
+  your:     ['j','ɔː','r'],
+
+  /* ── People / body / family ── */
+  arm:      ['ɑː','r','m'],
+  baby:     ['b','eɪ','b','iː'],
+  back:     ['b','æ','k'],
+  body:     ['b','ɔː','d','iː'],
+  bone:     ['b','oʊ','n'],
+  boy:      ['b','ɔɪ'],
+  brother:  ['b','r','ʌ','ð','r'],
+  child:    ['tʃ','aɪ','l','d'],
+  dad:      ['d','æ','d'],
+  daughter: ['d','ɔː','t','r'],
+  ear:      ['ɪ','r'],
+  eye:      ['aɪ'],
+  face:     ['f','eɪ','s'],
+  family:   ['f','æ','m','l','iː'],
+  father:   ['f','ɑː','ð','r'],
+  finger:   ['f','ɪ','ŋ','g','r'],
+  friend:   ['f','r','ɛ','n','d'],
+  girl:     ['g','ɜː','r','l'],
+  hand:     ['h','æ','n','d'],
+  head:     ['h','ɛ','d'],
+  heart:    ['h','ɑː','r','t'],
+  home:     ['h','oʊ','m'],
+  kid:      ['k','ɪ','d'],
+  leg:      ['l','ɛ','g'],
+  lip:      ['l','ɪ','p'],
+  man:      ['m','æ','n'],
+  mom:      ['m','ɔː','m'],
+  mother:   ['m','ʌ','ð','r'],
+  mouth:    ['m','aʊ','θ'],
+  name:     ['n','eɪ','m'],
+  nose:     ['n','oʊ','z'],
+  people:   ['p','iː','p','l'],
+  person:   ['p','ɜː','r','s','n'],
+  self:     ['s','ɛ','l','f'],
+  sister:   ['s','ɪ','s','t','r'],
+  skin:     ['s','k','ɪ','n'],
+  son:      ['s','ʌ','n'],
+  voice:    ['v','ɔɪ','s'],
+  wife:     ['w','aɪ','f'],
+  woman:    ['w','ʊ','m','n'],
+
+  /* ── Animals ── */
+  bear:     ['b','ɛ','r'],
+  bee:      ['b','iː'],
+  bird:     ['b','ɜː','r','d'],
+  cat:      ['k','æ','t'],
+  cow:      ['k','aʊ'],
+  dog:      ['d','ɔː','g'],
+  duck:     ['d','ʌ','k'],
+  elephant: ['ɛ','l','f','n','t'],
+  fish:     ['f','ɪ','ʃ'],
+  frog:     ['f','r','ɔː','g'],
+  horse:    ['h','ɔː','r','s'],
+  lion:     ['l','aɪ','n'],
+  monkey:   ['m','ʌ','ŋ','k','iː'],
+  mouse:    ['m','aʊ','s'],
+  pig:      ['p','ɪ','g'],
+  rabbit:   ['r','æ','b','ɪ','t'],
+  sheep:    ['ʃ','iː','p'],
+  snake:    ['s','n','eɪ','k'],
+  tiger:    ['t','aɪ','g','r'],
+  whale:    ['w','eɪ','l'],
+  wolf:     ['w','ʊ','l','f'],
+  zebra:    ['z','iː','b','r','ə'],
+
+  /* ── Food & drink ── */
+  apple:    ['æ','p','l'],
+  banana:   ['b','n','æ','n','ə'],
+  bread:    ['b','r','ɛ','d'],
+  cake:     ['k','eɪ','k'],
+  cheese:   ['tʃ','iː','z'],
+  chicken:  ['tʃ','ɪ','k','n'],
+  coffee:   ['k','ɔː','f','iː'],
+  egg:      ['ɛ','g'],
+  fish:     ['f','ɪ','ʃ'],
+  food:     ['f','uː','d'],
+  fruit:    ['f','r','uː','t'],
+  juice:    ['dʒ','uː','s'],
+  milk:     ['m','ɪ','l','k'],
+  pizza:    ['p','iː','t','s','ə'],
+  rice:     ['r','aɪ','s'],
+  salt:     ['s','ɔː','l','t'],
+  soup:     ['s','uː','p'],
+  sugar:    ['ʃ','ʊ','g','r'],
+  tea:      ['t','iː'],
+  water:    ['w','ɔː','t','r'],
+  wine:     ['w','aɪ','n'],
+
+  /* ── Places ── */
+  bed:      ['b','ɛ','d'],
+  bridge:   ['b','r','ɪ','dʒ'],
+  building: ['b','ɪ','l','d','ɪ','ŋ'],
+  city:     ['s','ɪ','t','iː'],
+  door:     ['d','ɔː','r'],
+  field:    ['f','iː','l','d'],
+  floor:    ['f','l','ɔː','r'],
+  garden:   ['g','ɑː','r','d','n'],
+  hill:     ['h','ɪ','l'],
+  hospital: ['h','ɔː','s','p','ɪ','t','l'],
+  house:    ['h','aʊ','s'],
+  kitchen:  ['k','ɪ','tʃ','n'],
+  lake:     ['l','eɪ','k'],
+  library:  ['l','aɪ','b','r','r','iː'],
+  market:   ['m','ɑː','r','k','ɪ','t'],
+  mountain: ['m','aʊ','n','t','n'],
+  park:     ['p','ɑː','r','k'],
+  river:    ['r','ɪ','v','r'],
+  road:     ['r','oʊ','d'],
+  room:     ['r','uː','m'],
+  school:   ['s','k','uː','l'],
+  sea:      ['s','iː'],
+  shop:     ['ʃ','ɔː','p'],
+  sky:      ['s','k','aɪ'],
+  town:     ['t','aʊ','n'],
+  tree:     ['t','r','iː'],
+  village:  ['v','ɪ','l','ɪ','dʒ'],
+  wall:     ['w','ɔː','l'],
+  window:   ['w','ɪ','n','d','oʊ'],
+  world:    ['w','ɜː','r','l','d'],
+
+  /* ── Actions / verbs ── */
+  ask:      ['ɑː','s','k'],
+  bring:    ['b','r','ɪ','ŋ'],
+  build:    ['b','ɪ','l','d'],
+  call:     ['k','ɔː','l'],
+  came:     ['k','eɪ','m'],
+  come:     ['k','ʌ','m'],
+  drink:    ['d','r','ɪ','ŋ','k'],
+  drive:    ['d','r','aɪ','v'],
+  eat:      ['iː','t'],
+  feel:     ['f','iː','l'],
+  find:     ['f','aɪ','n','d'],
+  fly:      ['f','l','aɪ'],
+  give:     ['g','ɪ','v'],
+  go:       ['g','oʊ'],
+  hear:     ['h','ɪ','r'],
+  help:     ['h','ɛ','l','p'],
+  hold:     ['h','oʊ','l','d'],
+  keep:     ['k','iː','p'],
+  leave:    ['l','iː','v'],
+  live:     ['l','ɪ','v'],
+  look:     ['l','ʊ','k'],
+  love:     ['l','ʌ','v'],
+  move:     ['m','uː','v'],
+  open:     ['oʊ','p','n'],
+  play:     ['p','l','eɪ'],
+  pull:     ['p','ʊ','l'],
+  push:     ['p','ʊ','ʃ'],
+  put:      ['p','ʊ','t'],
+  read:     ['r','iː','d'],
+  run:      ['r','ʌ','n'],
+  say:      ['s','eɪ'],
+  send:     ['s','ɛ','n','d'],
+  show:     ['ʃ','oʊ'],
+  sing:     ['s','ɪ','ŋ'],
+  sit:      ['s','ɪ','t'],
+  sleep:    ['s','l','iː','p'],
+  speak:    ['s','p','iː','k'],
+  stand:    ['s','t','æ','n','d'],
+  stop:     ['s','t','ɔː','p'],
+  swim:     ['s','w','ɪ','m'],
+  take:     ['t','eɪ','k'],
+  talk:     ['t','ɔː','k'],
+  tell:     ['t','ɛ','l'],
+  think:    ['θ','ɪ','ŋ','k'],
+  try:      ['t','r','aɪ'],
+  turn:     ['t','ɜː','r','n'],
+  walk:     ['w','ɔː','k'],
+  want:     ['w','ɔː','n','t'],
+  watch:    ['w','ɔː','tʃ'],
+  work:     ['w','ɜː','r','k'],
+  write:    ['r','aɪ','t'],
+
+  /* ── Adjectives / descriptors ── */
+  bad:      ['b','æ','d'],
+  big:      ['b','ɪ','g'],
+  black:    ['b','l','æ','k'],
+  blue:     ['b','l','uː'],
+  bright:   ['b','r','aɪ','t'],
+  cold:     ['k','oʊ','l','d'],
+  dark:     ['d','ɑː','r','k'],
+  deep:     ['d','iː','p'],
+  different:['d','ɪ','f','r','n','t'],
+  easy:     ['iː','z','iː'],
+  fast:     ['f','æ','s','t'],
+  free:     ['f','r','iː'],
+  full:     ['f','ʊ','l'],
+  good:     ['g','ʊ','d'],
+  great:    ['g','r','eɪ','t'],
+  green:    ['g','r','iː','n'],
+  hard:     ['h','ɑː','r','d'],
+  happy:    ['h','æ','p','iː'],
+  high:     ['h','aɪ'],
+  hot:      ['h','ɔː','t'],
+  kind:     ['k','aɪ','n','d'],
+  large:    ['l','ɑː','r','dʒ'],
+  light:    ['l','aɪ','t'],
+  long:     ['l','ɔː','ŋ'],
+  low:      ['l','oʊ'],
+  nice:     ['n','aɪ','s'],
+  old:      ['oʊ','l','d'],
+  poor:     ['p','ɔː','r'],
+  quick:    ['k','w','ɪ','k'],
+  real:     ['r','iː','l'],
+  right:    ['r','aɪ','t'],
+  safe:     ['s','eɪ','f'],
+  short:    ['ʃ','ɔː','r','t'],
+  simple:   ['s','ɪ','m','p','l'],
+  slow:     ['s','l','oʊ'],
+  small:    ['s','m','ɔː','l'],
+  smart:    ['s','m','ɑː','r','t'],
+  soft:     ['s','ɔː','f','t'],
+  strong:   ['s','t','r','ɔː','ŋ'],
+  tall:     ['t','ɔː','l'],
+  thin:     ['θ','ɪ','n'],
+  true:     ['t','r','uː'],
+  warm:     ['w','ɔː','r','m'],
+  white:    ['w','aɪ','t'],
+  wide:     ['w','aɪ','d'],
+  wild:     ['w','aɪ','l','d'],
+  wise:     ['w','aɪ','z'],
+  young:    ['j','ʌ','ŋ'],
+
+  /* ── Numbers / time ── */
+  eight:    ['eɪ','t'],
+  five:     ['f','aɪ','v'],
+  four:     ['f','ɔː','r'],
+  nine:     ['n','aɪ','n'],
+  one:      ['w','ʌ','n'],
+  seven:    ['s','ɛ','v','n'],
+  six:      ['s','ɪ','k','s'],
+  ten:      ['t','ɛ','n'],
+  three:    ['θ','r','iː'],
+  zero:     ['z','ɪ','r','oʊ'],
+  day:      ['d','eɪ'],
+  hour:     ['aʊ','r'],
+  minute:   ['m','ɪ','n','ɪ','t'],
+  month:    ['m','ʌ','n','θ'],
+  morning:  ['m','ɔː','r','n','ɪ','ŋ'],
+  night:    ['n','aɪ','t'],
+  today:    ['t','ə','d','eɪ'],
+  week:     ['w','iː','k'],
+  year:     ['j','ɪ','r'],
+
+  /* ── Technology / modern ── */
+  data:     ['d','eɪ','t','ə'],
+  device:   ['d','ɪ','v','aɪ','s'],
+  digital:  ['d','ɪ','dʒ','ɪ','t','l'],
+  email:    ['iː','m','eɪ','l'],
+  image:    ['ɪ','m','ɪ','dʒ'],
+  model:    ['m','ɔː','d','l'],
+  network:  ['n','ɛ','t','w','ɜː','r','k'],
+  phone:    ['f','oʊ','n'],
+  robot:    ['r','oʊ','b','ɔː','t'],
+  screen:   ['s','k','r','iː','n'],
+  signal:   ['s','ɪ','g','n','l'],
+  software: ['s','ɔː','f','t','w','ɛ','r'],
+  speech:   ['s','p','iː','tʃ'],
+  system:   ['s','ɪ','s','t','m'],
+  video:    ['v','ɪ','d','iː','oʊ'],
+  visible:  ['v','ɪ','z','ɪ','b','l'],
+  visual:   ['v','ɪ','ʒ','u','l'],
+  voice:    ['v','ɔɪ','s'],
+
+  /* ── Misc high-frequency ── */
+  about:    ['ə','b','aʊ','t'],
+  after:    ['æ','f','t','r'],
+  again:    ['ə','g','ɛ','n'],
+  age:      ['eɪ','dʒ'],
+  ago:      ['ə','g','oʊ'],
+  air:      ['ɛ','r'],
+  all:      ['ɔː','l'],
+  also:     ['ɔː','l','s','oʊ'],
+  always:   ['ɔː','l','w','eɪ','z'],
+  answer:   ['æ','n','s','r'],
+  area:     ['ɛ','r','iː','ə'],
+  begin:    ['b','ɪ','g','ɪ','n'],
+  between:  ['b','ɪ','t','w','iː','n'],
+  book:     ['b','ʊ','k'],
+  both:     ['b','oʊ','θ'],
+  business: ['b','ɪ','z','n','ɪ','s'],
+  can:      ['k','æ','n'],
+  change:   ['tʃ','eɪ','n','dʒ'],
+  close:    ['k','l','oʊ','z'],
+  cover:    ['k','ʌ','v','r'],
+  cut:      ['k','ʌ','t'],
+  death:    ['d','ɛ','θ'],
+  down:     ['d','aʊ','n'],
+  each:     ['iː','tʃ'],
+  end:      ['ɛ','n','d'],
+  enough:   ['ɪ','n','ʌ','f'],
+  even:     ['iː','v','n'],
+  ever:     ['ɛ','v','r'],
+  example:  ['ɪ','g','z','æ','m','p','l'],
+  far:      ['f','ɑː','r'],
+  few:      ['f','juː'],
+  first:    ['f','ɜː','r','s','t'],
+  follow:   ['f','ɔː','l','oʊ'],
+  game:     ['g','eɪ','m'],
+  general:  ['dʒ','ɛ','n','r','l'],
+  group:    ['g','r','uː','p'],
+  hello:    ['h','ɛ','l','oʊ'],
+  here:     ['h','ɪ','r'],
+  idea:     ['aɪ','d','iː','ə'],
+  important:['ɪ','m','p','ɔː','r','t','n','t'],
+  job:      ['dʒ','ɔː','b'],
+  judge:    ['dʒ','ʌ','dʒ'],
+  jump:     ['dʒ','ʌ','m','p'],
+  king:     ['k','ɪ','ŋ'],
+  land:     ['l','æ','n','d'],
+  language: ['l','æ','ŋ','g','w','ɪ','dʒ'],
+  last:     ['l','æ','s','t'],
+  late:     ['l','eɪ','t'],
+  law:      ['l','ɔː'],
+  learn:    ['l','ɜː','r','n'],
+  left:     ['l','ɛ','f','t'],
+  life:     ['l','aɪ','f'],
+  line:     ['l','aɪ','n'],
+  list:     ['l','ɪ','s','t'],
+  little:   ['l','ɪ','t','l'],
+  local:    ['l','oʊ','k','l'],
+  loss:     ['l','ɔː','s'],
+  map:      ['m','æ','p'],
+  matter:   ['m','æ','t','r'],
+  mean:     ['m','iː','n'],
+  meet:     ['m','iː','t'],
+  mind:     ['m','aɪ','n','d'],
+  miss:     ['m','ɪ','s'],
+  next:     ['n','ɛ','k','s','t'],
+  note:     ['n','oʊ','t'],
+  nothing:  ['n','ʌ','θ','ɪ','ŋ'],
+  number:   ['n','ʌ','m','b','r'],
+  off:      ['ɔː','f'],
+  often:    ['ɔː','f','n'],
+  other:    ['ʌ','ð','r'],
+  own:      ['oʊ','n'],
+  page:     ['p','eɪ','dʒ'],
+  part:     ['p','ɑː','r','t'],
+  past:     ['p','æ','s','t'],
+  plan:     ['p','l','æ','n'],
+  point:    ['p','ɔɪ','n','t'],
+  power:    ['p','aʊ','r'],
+  price:    ['p','r','aɪ','s'],
+  problem:  ['p','r','ɔː','b','l','m'],
+  public:   ['p','ʌ','b','l','ɪ','k'],
+  rain:     ['r','eɪ','n'],
+  reach:    ['r','iː','tʃ'],
+  reason:   ['r','iː','z','n'],
+  rest:     ['r','ɛ','s','t'],
+  result:   ['r','ɪ','z','ʌ','l','t'],
+  return:   ['r','ɪ','t','ɜː','r','n'],
+  same:     ['s','eɪ','m'],
+  second:   ['s','ɛ','k','n','d'],
+  seem:     ['s','iː','m'],
+  set:      ['s','ɛ','t'],
+  side:     ['s','aɪ','d'],
+  since:    ['s','ɪ','n','s'],
+  size:     ['s','aɪ','z'],
+  something:['s','ʌ','m','θ','ɪ','ŋ'],
+  sound:    ['s','aʊ','n','d'],
+  still:    ['s','t','ɪ','l'],
+  study:    ['s','t','ʌ','d','iː'],
+  such:     ['s','ʌ','tʃ'],
+  sun:      ['s','ʌ','n'],
+  take:     ['t','eɪ','k'],
+  through:  ['θ','r','uː'],
+  together: ['t','ə','g','ɛ','ð','r'],
+  too:      ['t','uː'],
+  top:      ['t','ɔː','p'],
+  towards:  ['t','ɔː','r','d','z'],
+  under:    ['ʌ','n','d','r'],
+  until:    ['ʌ','n','t','ɪ','l'],
+  upon:     ['ə','p','ɔː','n'],
+  very:     ['v','ɛ','r','iː'],
+  view:     ['v','juː'],
+  whole:    ['h','oʊ','l'],
+  without:  ['w','ɪ','ð','aʊ','t'],
+  word:     ['w','ɜː','r','d'],
+  yet:      ['j','ɛ','t'],
+};
+
+/* ── CONFUSABLE PAIRS — words that look identical on lips ── */
+const CONFUSABLE_PAIRS = [
+  {
+    a: 'baby',   b: 'maybe',
+    why: 'Both start with the same bilabial closure (b/m). Indistinguishable at the start.',
+    vid: 1
+  },
+  {
+    a: 'pat',    b: 'bat',
+    why: '/p/ and /b/ are identical lip closures. Only voicing differs — invisible from outside.',
+    vid: 1
+  },
+  {
+    a: 'map',    b: 'mat',
+    why: 'Both end in identical alveolar positions. /p/ vs /t/ look the same from the front.',
+    vid: 1
+  },
+  {
+    a: 'face',   b: 'vase',
+    why: '/f/ and /v/ use the same labiodental shape. Voicing is the only difference — inaudible visually.',
+    vid: 2
+  },
+  {
+    a: 'fine',   b: 'vine',
+    why: 'Upper teeth on lower lip for both. A lip reader cannot distinguish these at all.',
+    vid: 2
+  },
+  {
+    a: 'see',    b: 'she',
+    why: '/s/ is a narrow slit; /ʃ/ adds a slight forward pucker. Easy to confuse at distance.',
+    vid: [7, 6]
+  },
+  {
+    a: 'ship',   b: 'chip',
+    why: '/ʃ/ and /tʃ/ are nearly the same lip shape — both postalveolar with mild rounding.',
+    vid: 6
+  },
+  {
+    a: 'think',  b: 'sink',
+    why: '/θ/ requires tongue-between-teeth — but speakers often don\'t protrude it visibly.',
+    vid: [3, 7]
+  },
+  {
+    a: 'dog',    b: 'tog',
+    why: '/d/ and /t/ are identical alveolar shapes. Only voicing differs.',
+    vid: 4
+  },
+  {
+    a: 'cat',    b: 'gat',
+    why: '/k/ and /g/ are both velar — zero visible lip movement for either.',
+    vid: 5
+  },
+  {
+    a: 'go',     b: 'know',
+    why: 'Both start with a velar stop (/g/ vs /n/ is alveolar, but /k/g/ng all look the same).',
+    vid: 5
+  },
+  {
+    a: 'food',   b: 'wood',
+    why: '/uː/ and /w/ look almost identical — both have tight rounded protrusion.',
+    vid: [16, 10]
+  },
+  {
+    a: 'red',    b: 'wed',
+    why: '/r/ has inward rounding; /w/ protrudes outward. Similar enough to confuse briefly.',
+    vid: [8, 10]
+  },
+  {
+    a: 'bed',    b: 'med',
+    why: '/b/ and /m/ are both complete bilabial closures — zero visual difference.',
+    vid: 1
+  },
+];
+
+/* ── PHONEME → VISEME MAP ── */
+const PH2V = {
+  '_':0, 'p':1,'b':1,'m':1,
+  'f':2,'v':2,
+  'θ':3,'ð':3,
+  'd':4,'t':4,'n':4,
+  'k':5,'g':5,'ŋ':5,
+  'tʃ':6,'dʒ':6,'ʃ':6,'ʒ':6,
+  's':7,'z':7,
+  'r':8, 'l':9,
+  'w':10,'ʍ':10,
+  'h':11,
+  'iː':12,'ɪ':12,
+  'æ':13,'ɛ':13,
+  'ɑː':14,'ʌ':14,
+  'oʊ':15,'ɔː':15,
+  'uː':16,'ʊ':16,
+  'eɪ':17,'aɪ':17,'ɔɪ':17,
+};
+
+/* ═══════════════════════════════════════════════════
+   LIPS-ONLY SVG RENDERER  v4 — tight lip crop
+   
+   Shows only the lips region with a small skin surround.
+   Anatomically accurate: cupid's bow upper lip, full lower
+   lip with highlight, oral cavity, teeth, tongue per shape.
+   
+   Coordinate system (per size):
+     - Canvas is centred on the lip seam
+     - seam sits exactly at vertical midpoint
+     - Upper lip extends upward, lower lip + opening downward
+     - Philtrum skin shown above, chin skin shown below
+═══════════════════════════════════════════════════ */
+
+/* Palette — hardcoded, no dark-mode inversion */
+const SKIN      = '#F2D0B0';  /* perioral skin */
+const SKIN_SH   = '#D9AC88';  /* shadow / philtrum groove */
+const LIP_U     = '#C2706A';  /* upper lip body */
+const LIP_U2    = '#B55E58';  /* upper lip darker edge */
+const LIP_L     = '#D4887C';  /* lower lip body */
+const LIP_HI    = '#EAB4AE';  /* lower lip highlight */
+const LIP_LN    = '#8A4840';  /* all lip outlines */
+const MOUTH_INT = '#1E0806';  /* oral cavity */
+const TEETH     = '#F5F0E4';  /* teeth */
+const TEETH_LN  = '#D8CEB6';  /* tooth gap lines */
+const TONGUE    = '#C05858';  /* tongue body */
+const TONGUE_LN = '#8C3838';  /* tongue midline */
+
+function renderMouth(cfg, large) {
+  /*
+   * Tight lip-only crop.
+   * W×H canvas — the seam (lip join line) sits at cy = H*0.42
+   * Upper lip fills upward from seam; lower lip + opening downward.
+   * A strip of skin above (philtrum) and below (chin) frames the lips.
+   *
+   * All shapes follow the same layer order:
+   *   skin bg → cavity → teeth → tongue → lower lip → upper lip → seam line
+   */
+
+  /* Canvas size */
+  const W  = large ? 180 : 74;
+  const H  = large ? 110 : 46;
+  const cx = W * 0.50;
+
+  /* Seam (lip join) Y — sits in upper-middle of canvas */
+  const seam = H * 0.42;
+
+  /* Lip half-widths and heights — scaled to canvas */
+  /* mW: half-width to lip corners */
+  const mW  = W * 0.38;
+  /* uHt: upper lip height from seam to bow peak */
+  const uHt = H * 0.20;
+  /* lHt: lower lip height from seam to lowest point (closed) */
+  const lHt = H * 0.22;
+
+  const lx = cx - mW;
+  const rx = cx + mW;
+
+  /* ═══════════════ BUILD SVG ═══════════════ */
+  let s = `<svg class="v-mouth" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+
+  /* ── 1. SKIN BACKGROUND (rounded rect) ── */
+  s += `<rect x="0" y="0" width="${W}" height="${H}" rx="${large ? 12 : 6}" fill="${SKIN}"/>`;
+
+  /* Subtle upper-lip shadow band (philtrum area) */
+  s += `<ellipse cx="${cx}" cy="${seam - uHt * 1.1}" rx="${mW * 0.55}" ry="${uHt * 0.45}"
+    fill="${SKIN_SH}" opacity="0.18"/>`;
+
+  /* Philtrum groove lines */
+  const pg = mW * 0.14;
+  s += `<path d="M${cx - pg} ${seam - uHt * 1.85} L${cx - pg * 0.6} ${seam - uHt * 0.9}"
+    stroke="${SKIN_SH}" stroke-width="${large ? 1.0 : 0.5}" fill="none" opacity="0.35" stroke-linecap="round"/>`;
+  s += `<path d="M${cx + pg} ${seam - uHt * 1.85} L${cx + pg * 0.6} ${seam - uHt * 0.9}"
+    stroke="${SKIN_SH}" stroke-width="${large ? 1.0 : 0.5}" fill="none" opacity="0.35" stroke-linecap="round"/>`;
+
+  /* Chin shadow below lower lip */
+  s += `<ellipse cx="${cx}" cy="${H * 0.93}" rx="${mW * 0.72}" ry="${H * 0.08}"
+    fill="${SKIN_SH}" opacity="0.14"/>`;
+
+  /* ─── INNER HELPERS ─── */
+
+  function cavity(oh, round) {
+    const cW = round ? mW * 0.72 : mW * 0.88;
+    s += `<ellipse cx="${cx}" cy="${seam + oh * 0.42}" rx="${cW}" ry="${oh * 0.65 + 1}" fill="${MOUTH_INT}"/>`;
+  }
+
+  function upperTeeth(oh) {
+    const tw  = mW * 0.88;
+    const th  = Math.min(oh * 0.44, H * 0.12);
+    const ty  = seam + oh * 0.03;
+    const rx2 = large ? 3.5 : 1.8;
+    s += `<rect x="${cx - tw}" y="${ty}" width="${tw * 2}" height="${th}" rx="${rx2}" fill="${TEETH}"/>`;
+    /* tooth gap lines */
+    const gaps = large ? 6 : 4;
+    for (let i = 1; i < gaps; i++) {
+      const tx2 = cx - tw + (tw * 2 / gaps) * i;
+      s += `<line x1="${tx2}" y1="${ty + 1}" x2="${tx2}" y2="${ty + th - 1}"
+        stroke="${TEETH_LN}" stroke-width="${large ? 0.8 : 0.5}" opacity="0.85"/>`;
+    }
+    /* top tooth sheen */
+    s += `<rect x="${cx - tw + 2}" y="${ty + 1}" width="${tw * 2 - 4}" height="${th * 0.3}"
+      rx="${rx2}" fill="white" opacity="0.22"/>`;
+  }
+
+  function lowerTeeth(oh) {
+    const tw = mW * 0.78;
+    const upperTh = Math.min(oh * 0.44, H * 0.12);
+    const ty = seam + upperTh + oh * 0.12;
+    const th = Math.min(oh * 0.30, H * 0.10);
+    const rx2 = large ? 3 : 1.5;
+    s += `<rect x="${cx - tw}" y="${ty}" width="${tw * 2}" height="${th}" rx="${rx2}" fill="${TEETH}" opacity="0.88"/>`;
+    const gaps = large ? 5 : 3;
+    for (let i = 1; i < gaps; i++) {
+      const tx2 = cx - tw + (tw * 2 / gaps) * i;
+      s += `<line x1="${tx2}" y1="${ty + 1}" x2="${tx2}" y2="${ty + th - 1}"
+        stroke="${TEETH_LN}" stroke-width="${large ? 0.8 : 0.5}" opacity="0.85"/>`;
+    }
+  }
+
+  function tongue(oh) {
+    const ty = seam + oh * 0.60;
+    const tw = mW * 0.60;
+    const tr = oh * 0.28;
+    s += `<ellipse cx="${cx}" cy="${ty}" rx="${tw}" ry="${tr}" fill="${TONGUE}" opacity="0.92"/>`;
+    /* midline groove */
+    s += `<path d="M${cx} ${ty - tr * 0.75} Q${cx} ${ty + tr * 0.6} ${cx} ${ty + tr * 0.85}"
+      stroke="${TONGUE_LN}" stroke-width="${large ? 1.2 : 0.65}" fill="none" opacity="0.50"
+      stroke-linecap="round"/>`;
+    /* tongue highlight */
+    s += `<ellipse cx="${cx - tw * 0.18}" cy="${ty - tr * 0.35}" rx="${tw * 0.30}" ry="${tr * 0.28}"
+      fill="white" opacity="0.14"/>`;
+  }
+
+  /* Cupid's-bow upper lip */
+  function upperLip(w, ht) {
+    /* Full closed upper lip shape: corners → bow peaks → centre dip */
+    const path = `M${cx - w} ${seam}
+      C${cx - w * 0.70} ${seam - ht * 0.10}
+       ${cx - w * 0.44} ${seam - ht * 0.78}
+       ${cx - w * 0.24} ${seam - ht * 1.05}
+      Q${cx}            ${seam - ht * 0.55}
+       ${cx + w * 0.24} ${seam - ht * 1.05}
+      C${cx + w * 0.44} ${seam - ht * 0.78}
+       ${cx + w * 0.70} ${seam - ht * 0.10}
+       ${cx + w}        ${seam}`;
+    /* lip body fill */
+    s += `<path d="${path} Z" fill="${LIP_U}"/>`;
+    /* subtle darker upper edge / shadow */
+    s += `<path d="M${cx - w} ${seam}
+        C${cx - w * 0.70} ${seam - ht * 0.10}
+         ${cx - w * 0.44} ${seam - ht * 0.78}
+         ${cx - w * 0.24} ${seam - ht * 1.05}
+        Q${cx}            ${seam - ht * 0.55}
+         ${cx + w * 0.24} ${seam - ht * 1.05}
+        C${cx + w * 0.44} ${seam - ht * 0.78}
+         ${cx + w * 0.70} ${seam - ht * 0.10}
+         ${cx + w}        ${seam}"
+      stroke="${LIP_U2}" stroke-width="${large ? 1.8 : 0.9}" fill="none"
+      stroke-linecap="round" stroke-linejoin="round" opacity="0.45"/>`;
+    /* outline */
+    s += `<path d="${path}"
+      stroke="${LIP_LN}" stroke-width="${large ? 1.3 : 0.70}" fill="none"
+      stroke-linecap="round" stroke-linejoin="round"/>`;
+  }
+
+  /* Lower lip */
+  function lowerLip(w, ht, yStart) {
+    const path = `M${cx - w} ${yStart}
+      Q${cx - w * 0.52} ${yStart + ht * 1.05}
+       ${cx}             ${yStart + ht * 0.95}
+      Q${cx + w * 0.52} ${yStart + ht * 1.05}
+       ${cx + w}         ${yStart}`;
+    /* body */
+    s += `<path d="${path} Z" fill="${LIP_L}"/>`;
+    /* highlight arc */
+    s += `<path d="M${cx - w * 0.40} ${yStart + ht * 0.48}
+        Q${cx} ${yStart + ht * 0.96} ${cx + w * 0.40} ${yStart + ht * 0.48}"
+      stroke="${LIP_HI}" stroke-width="${large ? 2.0 : 1.0}" fill="none"
+      opacity="0.60" stroke-linecap="round"/>`;
+    /* outline */
+    s += `<path d="${path}"
+      stroke="${LIP_LN}" stroke-width="${large ? 1.3 : 0.70}" fill="none"
+      stroke-linecap="round"/>`;
+  }
+
+  /* Seam line (lip join) drawn on top of both lips */
+  function seamLine(w, dip) {
+    s += `<path d="M${cx - w} ${seam} Q${cx} ${seam + (dip || 0)} ${cx + w} ${seam}"
+      stroke="${LIP_LN}" stroke-width="${large ? 1.5 : 0.80}" fill="none" stroke-linecap="round"/>`;
+  }
+
+  /* ══════════════════════════════════════
+     SHAPE SWITCH — all 14 viseme shapes
+  ══════════════════════════════════════ */
+
+  if (cfg.shape === 'closed') {
+    /* Neutral rest — lips gently together, slight natural curve */
+    lowerLip(mW, lHt * 0.55, seam);
+    upperLip(mW, uHt);
+    seamLine(mW, 0);
+
+  } else if (cfg.shape === 'pressed') {
+    /* Bilabial stop — lips pressed flat, seam line very straight */
+    lowerLip(mW, lHt * 0.48, seam);
+    upperLip(mW, uHt * 0.88);
+    /* slightly pressed — seam dips in centre */
+    s += `<path d="M${cx - mW} ${seam} Q${cx} ${seam - (large ? 2.5 : 1.3)} ${cx + mW} ${seam}"
+      stroke="${LIP_LN}" stroke-width="${large ? 1.7 : 0.90}" fill="none" stroke-linecap="round"/>`;
+
+  } else if (cfg.shape === 'bite') {
+    /* Labiodental — upper teeth rest on lower lip */
+    const th = large ? H * 0.11 : H * 0.09;
+    const tw  = mW * 0.88;
+    /* lower lip pushed down slightly */
+    lowerLip(mW * 0.88, lHt * 0.58, seam + (large ? 3 : 1.5));
+    /* upper teeth band overlapping seam */
+    s += `<rect x="${cx - tw}" y="${seam - th}" width="${tw * 2}" height="${th}"
+      rx="${large ? 4 : 2}" fill="${TEETH}"/>`;
+    if (large) {
+      for (let i = 1; i < 6; i++) {
+        const tx2 = cx - tw + (tw * 2 / 6) * i;
+        s += `<line x1="${tx2}" y1="${seam - th + 1}" x2="${tx2}" y2="${seam - 1}"
+          stroke="${TEETH_LN}" stroke-width="0.8"/>`;
+      }
+      s += `<rect x="${cx - tw + 2}" y="${seam - th + 1}" width="${tw * 2 - 4}" height="${th * 0.28}"
+        rx="4" fill="white" opacity="0.20"/>`;
+    }
+    /* teeth bottom edge line */
+    s += `<path d="M${cx - tw} ${seam} Q${cx} ${seam + (large ? 1.5 : 0.8)} ${cx + tw} ${seam}"
+      stroke="${LIP_LN}" stroke-width="${large ? 1.1 : 0.60}" fill="none"/>`;
+    upperLip(mW, uHt * 0.80);
+
+  } else if (cfg.shape === 'tongue') {
+    /* Dental — tongue tip between teeth */
+    const oh = lHt * 0.95;
+    cavity(oh, false);
+    /* tongue tip protruding between lips */
+    const tp = large ? H * 0.055 : H * 0.048;
+    /* tongue between teeth at seam */
+    s += `<ellipse cx="${cx}" cy="${seam}" rx="${mW * 0.38}" ry="${tp * 1.0}"
+      fill="${TONGUE}" opacity="0.92"/>`;
+    /* tongue body visible in cavity */
+    s += `<ellipse cx="${cx}" cy="${seam + oh * 0.30}" rx="${mW * 0.48}" ry="${oh * 0.42}"
+      fill="${TONGUE}" opacity="0.85"/>`;
+    /* midline */
+    s += `<path d="M${cx} ${seam - tp * 0.8} Q${cx} ${seam + oh * 0.5} ${cx} ${seam + oh * 0.65}"
+      stroke="${TONGUE_LN}" stroke-width="${large ? 1.0 : 0.55}" fill="none" opacity="0.50"
+      stroke-linecap="round"/>`;
+    lowerLip(mW, lHt * 0.80, seam + oh);
+    upperLip(mW, uHt);
+
+  } else if (cfg.shape === 'slit') {
+    /* Sibilant S/Z — narrow slit, teeth nearly touching */
+    const oh = lHt * 0.38;
+    cavity(oh, false);
+    upperTeeth(oh);
+    lowerLip(mW * 0.95, lHt * 0.58, seam + oh);
+    upperLip(mW, uHt * 0.82);
+    seamLine(mW * 0.95, 0);
+
+  } else if (cfg.shape === 'pucker') {
+    /* Postalveolar CH/SH — lip pucker, narrowed and protruded */
+    const pw  = mW * 0.60;
+    const oh  = lHt * 1.10;
+    /* cavity narrowed */
+    s += `<ellipse cx="${cx}" cy="${seam + oh * 0.40}" rx="${pw * 0.68}" ry="${oh * 0.60 + 1}"
+      fill="${MOUTH_INT}"/>`;
+    /* lower lip — rounded/puckered */
+    const llP = `M${cx - pw} ${seam + oh}
+      Q${cx - pw * 0.44} ${seam + oh + lHt * 1.30}
+       ${cx}             ${seam + oh + lHt * 1.10}
+      Q${cx + pw * 0.44} ${seam + oh + lHt * 1.30}
+       ${cx + pw}        ${seam + oh}`;
+    s += `<path d="${llP} Z" fill="${LIP_L}"/>`;
+    s += `<path d="M${cx - pw * 0.34} ${seam + oh + lHt * 0.65}
+        Q${cx} ${seam + oh + lHt * 1.08} ${cx + pw * 0.34} ${seam + oh + lHt * 0.65}"
+      stroke="${LIP_HI}" stroke-width="${large ? 2.0 : 1.0}" fill="none" opacity="0.58"
+      stroke-linecap="round"/>`;
+    s += `<path d="${llP}" stroke="${LIP_LN}" stroke-width="${large ? 1.3 : 0.70}" fill="none"
+      stroke-linecap="round"/>`;
+    /* upper lip — puckered, narrowed, raised peak less pronounced */
+    const ulP = `M${cx - pw} ${seam}
+      C${cx - pw * 0.65} ${seam - uHt * 0.12}
+       ${cx - pw * 0.25} ${seam - uHt * 1.20}
+       ${cx}             ${seam - uHt * 0.68}
+      C${cx + pw * 0.25} ${seam - uHt * 1.20}
+       ${cx + pw * 0.65} ${seam - uHt * 0.12}
+       ${cx + pw}        ${seam}`;
+    s += `<path d="${ulP} Z" fill="${LIP_U}"/>`;
+    s += `<path d="${ulP}" stroke="${LIP_LN}" stroke-width="${large ? 1.3 : 0.70}" fill="none"
+      stroke-linecap="round"/>`;
+    /* seam */
+    s += `<path d="M${cx - pw} ${seam} Q${cx} ${seam + (large ? 1.5 : 0.8)} ${cx + pw} ${seam}"
+      stroke="${LIP_LN}" stroke-width="${large ? 1.4 : 0.75}" fill="none" stroke-linecap="round"/>`;
+
+  } else if (cfg.shape === 'w') {
+    /* Rounded W/OO — strong rounded protrusion */
+    const pw = mW * 0.52;
+    const oh = cfg.open > 0.15 ? lHt * 0.75 : lHt * 0.28;
+    s += `<ellipse cx="${cx}" cy="${seam + oh * 0.40}" rx="${pw * 0.60}" ry="${oh * 0.65 + 0.5}"
+      fill="${MOUTH_INT}"/>`;
+    /* lower lip — very rounded */
+    const llP = `M${cx - pw} ${seam + oh}
+      Q${cx - pw * 0.38} ${seam + oh + lHt * 1.45}
+       ${cx}             ${seam + oh + lHt * 1.28}
+      Q${cx + pw * 0.38} ${seam + oh + lHt * 1.45}
+       ${cx + pw}        ${seam + oh}`;
+    s += `<path d="${llP} Z" fill="${LIP_L}"/>`;
+    s += `<path d="M${cx - pw * 0.30} ${seam + oh + lHt * 0.68}
+        Q${cx} ${seam + oh + lHt * 1.22} ${cx + pw * 0.30} ${seam + oh + lHt * 0.68}"
+      stroke="${LIP_HI}" stroke-width="${large ? 2.0 : 1.0}" fill="none" opacity="0.58"
+      stroke-linecap="round"/>`;
+    s += `<path d="${llP}" stroke="${LIP_LN}" stroke-width="${large ? 1.3 : 0.70}" fill="none"
+      stroke-linecap="round"/>`;
+    /* upper lip — rounded, low bow */
+    const ulP = `M${cx - pw} ${seam}
+      C${cx - pw * 0.60} ${seam - uHt * 0.08}
+       ${cx - pw * 0.18} ${seam - uHt * 1.30}
+       ${cx}             ${seam - uHt * 0.72}
+      C${cx + pw * 0.18} ${seam - uHt * 1.30}
+       ${cx + pw * 0.60} ${seam - uHt * 0.08}
+       ${cx + pw}        ${seam}`;
+    s += `<path d="${ulP} Z" fill="${LIP_U}"/>`;
+    s += `<path d="${ulP}" stroke="${LIP_LN}" stroke-width="${large ? 1.3 : 0.70}" fill="none"
+      stroke-linecap="round"/>`;
+    s += `<path d="M${cx - pw} ${seam} Q${cx} ${seam + (large ? 1.5 : 0.8)} ${cx + pw} ${seam}"
+      stroke="${LIP_LN}" stroke-width="${large ? 1.4 : 0.75}" fill="none" stroke-linecap="round"/>`;
+
+  } else if (cfg.shape === 'ee') {
+    /* EE/IH vowel — wide spread smile, teeth visible */
+    const ew  = mW * 1.05;
+    const oh  = lHt * 0.60;
+    cavity(oh, false);
+    upperTeeth(oh);
+    /* lower lip — flat, spread wide */
+    const llP = `M${cx - ew} ${seam + oh}
+      Q${cx - ew * 0.50} ${seam + oh + lHt * 0.48}
+       ${cx}             ${seam + oh + lHt * 0.40}
+      Q${cx + ew * 0.50} ${seam + oh + lHt * 0.48}
+       ${cx + ew}        ${seam + oh}`;
+    s += `<path d="${llP} Z" fill="${LIP_L}"/>`;
+    s += `<path d="${llP}" stroke="${LIP_LN}" stroke-width="${large ? 1.2 : 0.65}" fill="none"
+      stroke-linecap="round"/>`;
+    /* upper lip — flat, spread, low cupid bow for smile */
+    const ulP = `M${cx - ew} ${seam}
+      C${cx - ew * 0.75} ${seam - uHt * 0.06}
+       ${cx - ew * 0.32} ${seam - uHt * 0.72}
+       ${cx}             ${seam - uHt * 0.34}
+      C${cx + ew * 0.32} ${seam - uHt * 0.72}
+       ${cx + ew * 0.75} ${seam - uHt * 0.06}
+       ${cx + ew}        ${seam}`;
+    s += `<path d="${ulP} Z" fill="${LIP_U}"/>`;
+    s += `<path d="${ulP}" stroke="${LIP_LN}" stroke-width="${large ? 1.2 : 0.65}" fill="none"
+      stroke-linecap="round"/>`;
+    s += `<path d="M${cx - ew} ${seam} Q${cx} ${seam - (large ? 1.0 : 0.5)} ${cx + ew} ${seam}"
+      stroke="${LIP_LN}" stroke-width="${large ? 1.4 : 0.75}" fill="none" stroke-linecap="round"/>`;
+
+  } else if (cfg.shape === 'r') {
+    /* R consonant — lips draw inward, slightly rounded */
+    const rw = mW * 0.76;
+    const oh = lHt * 0.90;
+    cavity(oh, true);
+    /* lower lip curves in */
+    const llP = `M${cx - rw} ${seam + oh}
+      Q${cx - rw * 0.48} ${seam + oh + lHt * 0.92}
+       ${cx}             ${seam + oh + lHt * 0.82}
+      Q${cx + rw * 0.48} ${seam + oh + lHt * 0.92}
+       ${cx + rw}        ${seam + oh}`;
+    s += `<path d="${llP} Z" fill="${LIP_L}"/>`;
+    s += `<path d="M${cx - rw * 0.38} ${seam + oh + lHt * 0.42}
+        Q${cx} ${seam + oh + lHt * 0.80} ${cx + rw * 0.38} ${seam + oh + lHt * 0.42}"
+      stroke="${LIP_HI}" stroke-width="${large ? 2.0 : 1.0}" fill="none" opacity="0.55"
+      stroke-linecap="round"/>`;
+    s += `<path d="${llP}" stroke="${LIP_LN}" stroke-width="${large ? 1.3 : 0.70}" fill="none"
+      stroke-linecap="round"/>`;
+    /* upper lip — drawn inward, lower bow */
+    const ulP = `M${cx - rw} ${seam}
+      C${cx - rw * 0.68} ${seam - uHt * 0.08}
+       ${cx - rw * 0.36} ${seam - uHt * 0.90}
+       ${cx}             ${seam - uHt * 0.52}
+      C${cx + rw * 0.36} ${seam - uHt * 0.90}
+       ${cx + rw * 0.68} ${seam - uHt * 0.08}
+       ${cx + rw}        ${seam}`;
+    s += `<path d="${ulP} Z" fill="${LIP_U}"/>`;
+    s += `<path d="${ulP}" stroke="${LIP_LN}" stroke-width="${large ? 1.3 : 0.70}" fill="none"
+      stroke-linecap="round"/>`;
+    s += `<path d="M${cx - rw} ${seam} Q${cx} ${seam + (large ? 1.2 : 0.7)} ${cx + rw} ${seam}"
+      stroke="${LIP_LN}" stroke-width="${large ? 1.5 : 0.80}" fill="none" stroke-linecap="round"/>`;
+
+  } else {
+    /* neutral / slight / midopen / open / roundmid */
+    const openFactor = cfg.shape === 'open'     ? 1.00
+                     : cfg.shape === 'midopen'   ? 0.55
+                     : cfg.shape === 'roundmid'  ? 0.44
+                     : cfg.shape === 'slight'    ? 0.16
+                     : 0.28;   /* neutral */
+    const wScale = cfg.round ? 0.80 : 1.00;
+    const ow = mW * wScale;
+    /* opening height */
+    const oh = lHt * (0.28 + openFactor * 2.20);
+
+    cavity(oh, cfg.round);
+    if (oh > lHt * 1.2) upperTeeth(oh);
+    if (oh > lHt * 1.8) lowerTeeth(oh);
+    if (cfg.shape === 'open') tongue(oh);
+
+    lowerLip(ow, lHt * (0.80 + openFactor * 0.35), seam + oh);
+    upperLip(ow, uHt * (cfg.shape === 'open' ? 0.78 : 1.0));
+    seamLine(ow * 0.94, oh > 0 ? 0 : 0);
+  }
+
+  s += '</svg>';
+  return s;
+}
+
+/* ═══════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════ */
+let selectedId = null;
+let currentFilter = 'all';
+let highlightedIds = new Set();
+
+/* ═══════════════════════════════════════════════════
+   VISEME SOUND MAP
+   Maps each viseme to the best spoken utterance that
+   demonstrates how that mouth-shape sounds.
+   We speak a short, clear word/sound that isolates
+   the target phoneme as purely as possible.
+═══════════════════════════════════════════════════ */
+const VISEME_SOUND = [
+  // V00 Silence — speak a pause via empty utterance
+  { text: '...', rate: 0.5 },           // 0 Silence/Rest
+  { text: 'mmm', rate: 0.7 },           // 1 P·B·M  — "mmm" isolates bilabial closure
+  { text: 'fff', rate: 0.8 },           // 2 F·V     — sustained labiodental fricative
+  { text: 'the', rate: 0.7 },           // 3 TH      — dental fricative "the"
+  { text: 'nnn', rate: 0.7 },           // 4 D·T·N   — alveolar nasal sustain
+  { text: 'ing', rate: 0.7 },           // 5 K·G·NG  — velar nasal "ing"
+  { text: 'shh', rate: 0.7 },           // 6 CH·SH·J — "shh" lip pucker
+  { text: 'sss', rate: 0.8 },           // 7 S·Z     — sibilant sustain
+  { text: 'rrr', rate: 0.7 },           // 8 R       — approximant
+  { text: 'lll', rate: 0.7 },           // 9 L       — lateral approximant
+  { text: 'woo', rate: 0.7 },           // 10 W·WH   — rounded "woo"
+  { text: 'hah', rate: 0.75 },          // 11 H      — aspirated "hah"
+  { text: 'ee',  rate: 0.65 },          // 12 EE·IH  — spread "ee"
+  { text: 'eh',  rate: 0.65 },          // 13 AE·EH  — "eh"
+  { text: 'aah', rate: 0.65 },          // 14 AH·UH  — open "aah"
+  { text: 'oh',  rate: 0.65 },          // 15 OH·AW  — rounded mid "oh"
+  { text: 'oo',  rate: 0.65 },          // 16 OO·UH  — close rounded "oo"
+  { text: 'ay',  rate: 0.65 },          // 17 Diphthongs — "ay"
+];
+
+
+function renderGrid() {
+  const grid = document.getElementById('vis-grid');
+  const filtered = VISEMES.filter(v => {
+    if (currentFilter === 'ambig') return v.ambig;
+    if (currentFilter === 'vowel') return v.type === 'vowel';
+    if (currentFilter === 'consonant') return v.type === 'consonant';
+    return true;
+  });
+
+  document.getElementById('grid-meta').textContent =
+    `Showing ${filtered.length} viseme${filtered.length !== 1 ? 's' : ''}`;
+
+  grid.innerHTML = '';
+  filtered.forEach(v => {
+    const card = document.createElement('div');
+
+    let cls = 'v-card';
+    if (v.ambig) cls += ' ambiguous';
+    if (v.id === selectedId) cls += ' selected';
+    else if (highlightedIds.has(v.id)) cls += ' highlighted';
+
+    card.className = cls;
+    card.innerHTML = `
+      ${v.ambig ? '<div class="v-warn-dot"></div>' : ''}
+      <div class="v-id">V${String(v.id).padStart(2,'0')}</div>
+      ${renderMouth(v.mouth, false)}
+      <div class="v-label">${v.label}</div>
+      <div class="v-type">${v.type}</div>
+    `;
+    card.onclick = () => selectViseme(v.id);
+    grid.appendChild(card);
+  });
+}
+
+/* ═══════════════════════════════════════════════════
+   SELECT VISEME → DETAIL PANEL
+═══════════════════════════════════════════════════ */
+function selectViseme(id) {
+  selectedId = id;
+  renderGrid();
+
+  const v = VISEMES[id];
+  const panel = document.getElementById('detail-panel');
+
+  const shapeDescriptions = {
+    pressed: 'Lips fully closed',
+    closed: 'Lips at rest',
+    bite: 'Teeth on lower lip',
+    tongue: 'Tongue tip visible',
+    slit: 'Narrow tooth slit',
+    pucker: 'Rounded pucker',
+    w: 'Rounded protrusion',
+    ee: 'Wide spread (smile)',
+    r: 'Inward rounding',
+    open: 'Wide open jaw',
+    midopen: 'Mid-open',
+    roundmid: 'Rounded, mid-open',
+    neutral: 'Neutral / slight open',
+    slight: 'Slightly parted',
+  };
+  const shapeLabel = shapeDescriptions[v.mouth.shape] || v.mouth.shape;
+
+  panel.innerHTML = `
+    <div>
+      <div class="d-id">Viseme V${String(v.id).padStart(2,'0')}</div>
+      <div class="d-title">${v.label}</div>
+
+      <div class="d-badges">
+        ${v.ambig
+          ? `<span class="d-badge ambig">⚠ Visually Ambiguous</span>`
+          : `<span class="d-badge safe">✓ Distinguishable</span>`}
+        <span class="d-badge type">${v.type.charAt(0).toUpperCase() + v.type.slice(1)}</span>
+      </div>
+
+      <div class="d-mouth-box">
+        ${renderMouth(v.mouth, true)}
+        <div class="d-mouth-label">${shapeLabel}</div>
+      </div>
+
+      <div class="d-phonemes-wrap">
+        <div class="d-phonemes-label">Phonemes in this group</div>
+        <div class="d-phonemes">
+          ${v.phonemes.map(p => `<span class="d-ph">${p}</span>`).join('')}
+        </div>
+      </div>
+
+      <div class="d-desc">${v.desc}</div>
+
+      <div class="d-words-label">Example words</div>
+      <div class="d-words">
+        ${v.words.map(w => `<span class="d-word" onclick="tryWord('${w}')">${w}</span>`).join('')}
+      </div>
+    </div>
+  `;
+}
+
+/* ═══════════════════════════════════════════════════
+   FILTER
+═══════════════════════════════════════════════════ */
+function setFilter(filter, el) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('on'));
+  el.classList.add('on');
+  renderGrid();
+}
+
+/* ═══════════════════════════════════════════════════
+   WORD LOOKUP
+═══════════════════════════════════════════════════ */
+function tryWord(word) {
+  const clean = word.toLowerCase().replace(/[^a-zæɑɛɪɔʌʊθðŋʃʒtdʍ]/g, '');
+  const lookup = word.toLowerCase().trim();
+
+  document.getElementById('word-input').value = word;
+  document.querySelectorAll('.word-chip').forEach(b =>
+    b.classList.toggle('active', b.textContent === word)
+  );
+
+  const phonemes = WORD_MAP[lookup];
+  if (!phonemes) {
+    highlightedIds = new Set();
+    document.getElementById('seq-result').classList.remove('visible');
+    renderGrid();
+    return;
+  }
+
+  const vids = phonemes.map(ph => PH2V[ph] ?? -1).filter(x => x >= 0);
+  highlightedIds = new Set(vids);
+
+  document.getElementById('seq-label').textContent = `Viseme sequence for "${word}"`;
+
+  const chipsContainer = document.getElementById('seq-chips');
+  chipsContainer.innerHTML = '';
+
+  phonemes.forEach(ph => {
+    const vid = PH2V[ph] ?? -1;
+    if (vid < 0) return;
+    const v = VISEMES[vid];
+    const chip = document.createElement('div');
+    chip.className = 'seq-chip' + (v.ambig ? ' ambiguous' : '');
+    chip.innerHTML = `
+      <span class="sc-phoneme">${ph}</span>
+      <span class="sc-viseme">V${String(vid).padStart(2,'0')}</span>
+      ${v.ambig ? '<span class="sc-warn">ambiguous</span>' : ''}
+    `;
+    chip.onclick = () => selectViseme(vid);
+    chipsContainer.appendChild(chip);
+  });
+
+  document.getElementById('seq-result').classList.add('visible');
+  renderGrid();
+}
+
+/* ═══════════════════════════════════════════════════
+   SPEAK VISEME SOUND
+═══════════════════════════════════════════════════ */
+function speakViseme(id, btn) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const sound = VISEME_SOUND[id];
+  if (!sound) return;
+  const utt = new SpeechSynthesisUtterance(sound.text);
+  utt.lang = 'en-US';
+  utt.rate = sound.rate || 0.75;
+  utt.pitch = 1.0;
+  if (btn) {
+    btn.classList.add('speaking');
+    btn.textContent = '♪';
+    utt.onend  = () => { btn.classList.remove('speaking'); btn.textContent = '▶'; };
+    utt.onerror = () => { btn.classList.remove('speaking'); btn.textContent = '▶'; };
+  }
+  window.speechSynthesis.speak(utt);
+}
+
+/* ═══════════════════════════════════════════════════
+   SPEAK (word lookup)
+═══════════════════════════════════════════════════ */
+function speakWord(word) {
+  const w = word || document.getElementById('word-input').value.trim();
+  if (!w || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(w);
+  utt.lang = 'en-US';
+  utt.rate = 0.88;
+  utt.pitch = 1.0;
+  const btn = document.getElementById('speak-btn');
+  if (btn) {
+    btn.classList.add('speaking');
+    utt.onend = () => btn.classList.remove('speaking');
+    utt.onerror = () => btn.classList.remove('speaking');
+  }
+  window.speechSynthesis.speak(utt);
+}
+
+/* ═══════════════════════════════════════════════════
+   AUTOCOMPLETE
+═══════════════════════════════════════════════════ */
+const ALL_WORDS = Object.keys(WORD_MAP).sort();
+let acIndex = -1;
+
+const wordInput = document.getElementById('word-input');
+const acList    = document.getElementById('autocomplete-list');
+
+function showAutocomplete(val) {
+  acIndex = -1;
+  if (!val || val.length < 1) { acList.classList.remove('open'); return; }
+  const matches = ALL_WORDS.filter(w => w.startsWith(val)).slice(0, 8);
+  if (!matches.length) { acList.classList.remove('open'); return; }
+  acList.innerHTML = matches.map((w, i) => {
+    const phs = WORD_MAP[w].join(' ');
+    return `<div class="ac-item" data-word="${w}" data-i="${i}">
+      <span>${w}</span><span class="ac-item-ph">${phs}</span>
+    </div>`;
+  }).join('');
+  acList.classList.add('open');
+  acList.querySelectorAll('.ac-item').forEach(el => {
+    el.addEventListener('mousedown', e => {
+      e.preventDefault();
+      tryWord(el.dataset.word);
+      acList.classList.remove('open');
+    });
+  });
+}
+
+wordInput.addEventListener('input', function () {
+  const w = this.value.toLowerCase().trim();
+  showAutocomplete(w);
+  document.querySelectorAll('.word-chip').forEach(b => b.classList.remove('active'));
+  if (WORD_MAP[w]) {
+    tryWord(w);
+  } else {
+    highlightedIds = new Set();
+    document.getElementById('seq-result').classList.remove('visible');
+    renderGrid();
+  }
+});
+
+wordInput.addEventListener('keydown', function (e) {
+  const items = acList.querySelectorAll('.ac-item');
+  if (!items.length || !acList.classList.contains('open')) {
+    if (e.key === 'Enter') speakWord();
+    return;
+  }
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    acIndex = Math.min(acIndex + 1, items.length - 1);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    acIndex = Math.max(acIndex - 1, -1);
+  } else if (e.key === 'Enter' && acIndex >= 0) {
+    e.preventDefault();
+    tryWord(items[acIndex].dataset.word);
+    acList.classList.remove('open');
+    return;
+  } else if (e.key === 'Escape') {
+    acList.classList.remove('open');
+    return;
+  }
+  items.forEach((el, i) => el.classList.toggle('focused', i === acIndex));
+});
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.lookup-input-wrap')) acList.classList.remove('open');
+});
+
+/* ═══════════════════════════════════════════════════
+   INSIGHT PAIRS
+═══════════════════════════════════════════════════ */
+const insightContainer = document.getElementById('insight-pairs');
+PAIRS.forEach(p => {
+  const el = document.createElement('div');
+  el.className = 'i-pair';
+  el.innerHTML = `<div class="i-pair-ph">${p.ph}</div><div class="i-pair-why">${p.why}</div>`;
+  insightContainer.appendChild(el);
+});
+
+/* ── INIT ── */
+renderGrid();
+</script>
+</body>
+</html>

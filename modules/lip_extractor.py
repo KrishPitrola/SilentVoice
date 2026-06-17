@@ -47,6 +47,14 @@ class LipExtractor:
         x = max(0, x - padding)
         y = max(0, y - padding)
 
-        lip_region = frame[y:y+h_box+padding, x:x+w_box+padding]
+        # Use .copy() so the green box doesn't appear in the cropped lip_region
+        lip_region = frame[y:y+h_box+padding, x:x+w_box+padding].copy()
+
+        # Resize the crop to (width=128, height=64) for LipNet 3D CNN frontend
+        if lip_region.size > 0:
+            lip_region = cv2.resize(lip_region, (128, 64))
+
+        # Draw a green bounding box around the lip region on the main frame
+        cv2.rectangle(frame, (x, y), (x+w_box+padding, y+h_box+padding), (0, 255, 0), 2)
 
         return lip_region
