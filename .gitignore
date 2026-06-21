@@ -5,3 +5,20 @@ __pycache__/
 .DS_Store
 .vscode/
 .idea/
+
+# Model weights - too large for git, downloaded separately
+weights/mpc001/
+weights/*.pt
+weights/*.pth
+mpc001_vsr/benchmarks/GRID/models/
+mpc001_vsr/benchmarks/LRS3/
+mpc001_vsr/benchmarks/*/models/
+
+# Video files
+data/grid/s1/*.mpg
+data/grid/s1/*.mp4
+
+# Python
+venv/
+__pycache__/
+*.pyc
