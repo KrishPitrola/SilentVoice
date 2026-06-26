@@ -1,17 +1,24 @@
 """
-app.py — SilentVoice Phase 1: FastAPI WebSocket backend
-        with async pipeline (asyncio.Queue) for clip-based lip-reading.
+app.py — SilentVoice Phase 2: Auto-segmenting lip-reading backend
+==================================================================
 
-Pipeline:
-    Browser MediaRecorder (.webm blob)
-    ↓ WebSocket (binary)
-    clip_queue
-    ↓ VSR worker  (MPC001VSR.transcribe)      — threadpool
-    nlp_queue
-    ↓ NLP worker  (NLPCorrector.correct)      — threadpool
-    tts_queue
-    ↓ TTS worker  (TTSEngine.speak_to_file)   — threadpool
-    ↓ JSON text + raw MP3 bytes → WebSocket
+Pipeline (new):
+    Browser canvas  →  JPEG frames over WebSocket  →  LipMotionSegmenter
+    → utterance end detected → save temp .mp4
+    → clip_queue
+    → VSR worker  (AutoAVSRWrapper.transcribe)    — threadpool
+    → nlp_queue
+    → NLP worker  (NLPCorrector.correct)          — threadpool
+    → tts_queue
+    → TTS worker  (TTSEngine.speak_to_file)       — threadpool
+    → JSON text + raw MP3 bytes → WebSocket → browser
+
+Protocol (WebSocket /ws):
+    CLIENT → SERVER : raw JPEG bytes per frame  (binary messages)
+    CLIENT → SERVER : JSON text {"type":"control","action":"start"|"stop"}
+    SERVER → CLIENT : JSON text {"type":"status","speaking":bool,"score":float}
+    SERVER → CLIENT : JSON text {"type":"result","raw":"...","corrected":"...","status":"done"}
+    SERVER → CLIENT : binary MP3 audio bytes
 
 Run with:
     uvicorn app:app --host 0.0.0.0 --port 8000
@@ -22,6 +29,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import tempfile
 from pathlib import Path
@@ -31,22 +39,24 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 
 from auto_avsr_wrapper import AutoAVSRWrapper
+from lip_segmenter import LipMotionSegmenter, frames_to_mp4
 from nlp_corrector import NLPCorrector
 from tts_engine import TTSEngine
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(name)s  %(message)s")
+logger = logging.getLogger("app")
 
 # ──────────────────────────────────────────────────────────────────
 # App + global state
 # ──────────────────────────────────────────────────────────────────
-app = FastAPI(title="SilentVoice API", version="2.0.0")
+app = FastAPI(title="SilentVoice API", version="3.0.0")
 
-# Models are populated at startup
+# Models populated at startup
 vsr: AutoAVSRWrapper | None = None
-nlp: NLPCorrector | None = None
-tts: TTSEngine | None = None
+nlp: NLPCorrector   | None = None
+tts: TTSEngine      | None = None
 
-# Each active WebSocket gets its own set of three queues so multiple
-# clients can be served independently.  The queues are keyed by the
-# WebSocket object itself.
+# Each active WebSocket gets its own set of queues, keyed by id(ws)
 ClientQueues = tuple[asyncio.Queue, asyncio.Queue, asyncio.Queue]
 _client_queues: dict[int, ClientQueues] = {}
 
@@ -60,27 +70,27 @@ async def load_models() -> None:
     global vsr, nlp, tts
     loop = asyncio.get_event_loop()
 
-    print("[startup] Loading AutoAVSRWrapper …", flush=True)
+    logger.info("[startup] Loading AutoAVSRWrapper …")
     vsr = await loop.run_in_executor(None, AutoAVSRWrapper)
-    print("[startup] AutoAVSRWrapper ready.", flush=True)
+    logger.info("[startup] AutoAVSRWrapper ready.")
 
-    print("[startup] Loading NLPCorrector …", flush=True)
+    logger.info("[startup] Loading NLPCorrector …")
     nlp = await loop.run_in_executor(None, NLPCorrector)
-    print("[startup] NLPCorrector ready.", flush=True)
+    logger.info("[startup] NLPCorrector ready.")
 
-    print("[startup] Loading TTSEngine …", flush=True)
+    logger.info("[startup] Loading TTSEngine …")
     tts = await loop.run_in_executor(None, TTSEngine)
-    print("[startup] TTSEngine ready.", flush=True)
+    logger.info("[startup] TTSEngine ready.")
 
-    print("[startup] All models loaded — server is ready.\n", flush=True)
+    logger.info("[startup] All models loaded — server is ready.\n")
 
 
 # ──────────────────────────────────────────────────────────────────
-# Worker coroutines (one set per client)
+# Worker coroutines (one set per client, unchanged from Phase 1)
 # ──────────────────────────────────────────────────────────────────
 async def vsr_worker(
     clip_queue: asyncio.Queue,
-    nlp_queue: asyncio.Queue,
+    nlp_queue:  asyncio.Queue,
     ws: WebSocket,
 ) -> None:
     """Pull video paths from clip_queue, run VSR in executor, push to nlp_queue."""
@@ -97,15 +107,14 @@ async def vsr_worker(
             raw_text: str = await loop.run_in_executor(
                 None, vsr.transcribe, video_path
             )
-            print(f"[VSR] {raw_text!r}", flush=True)
+            logger.info("[VSR] %r", raw_text)
             await nlp_queue.put((raw_text, video_path))
         except Exception as exc:
-            print(f"[VSR] Error: {exc}", flush=True)
-            # Skip this clip — clean up temp file and send error to client
+            logger.error("[VSR] Error: %s", exc)
             _remove(video_path)
             try:
                 await ws.send_text(
-                    json.dumps({"status": "error", "message": str(exc)})
+                    json.dumps({"type": "result", "status": "error", "message": str(exc)})
                 )
             except Exception:
                 pass
@@ -132,14 +141,14 @@ async def nlp_worker(
             corrected: str = await loop.run_in_executor(
                 None, nlp.correct, raw_text
             )
-            print(f"[NLP] {corrected!r}", flush=True)
+            logger.info("[NLP] %r", corrected)
             await tts_queue.put((raw_text, corrected, video_path))
         except Exception as exc:
-            print(f"[NLP] Error: {exc}", flush=True)
+            logger.error("[NLP] Error: %s", exc)
             _remove(video_path)
             try:
                 await ws.send_text(
-                    json.dumps({"status": "error", "message": str(exc)})
+                    json.dumps({"type": "result", "status": "error", "message": str(exc)})
                 )
             except Exception:
                 pass
@@ -165,14 +174,13 @@ async def tts_worker(
             mp3_path = await loop.run_in_executor(
                 None, tts.speak_to_file, corrected
             )
-            print(f"[TTS] Audio written to {mp3_path!r}", flush=True)
+            logger.info("[TTS] Audio written to %r", mp3_path)
 
-            # Read audio bytes before sending
             audio_bytes = Path(mp3_path).read_bytes()
 
             # 1️⃣  JSON metadata
             payload = json.dumps(
-                {"raw": raw_text, "corrected": corrected, "status": "done"}
+                {"type": "result", "raw": raw_text, "corrected": corrected, "status": "done"}
             )
             await ws.send_text(payload)
 
@@ -180,13 +188,12 @@ async def tts_worker(
             await ws.send_bytes(audio_bytes)
 
         except WebSocketDisconnect:
-            # Client left — just clean up and stop
             pass
         except Exception as exc:
-            print(f"[TTS] Error: {exc}", flush=True)
+            logger.error("[TTS] Error: %s", exc)
             try:
                 await ws.send_text(
-                    json.dumps({"status": "error", "message": str(exc)})
+                    json.dumps({"type": "result", "status": "error", "message": str(exc)})
                 )
             except Exception:
                 pass
@@ -198,64 +205,124 @@ async def tts_worker(
 
 
 # ──────────────────────────────────────────────────────────────────
-# WebSocket endpoint
+# WebSocket endpoint — Phase 2: continuous JPEG frame streaming
 # ──────────────────────────────────────────────────────────────────
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket) -> None:
     """
     Accept a WebSocket connection.
 
-    Protocol:
-        CLIENT → SERVER : raw .webm video bytes (one message per clip)
-        SERVER → CLIENT : text  {"raw": "...", "corrected": "...", "status": "done"}
-        SERVER → CLIENT : bytes (MP3 audio)
+    Protocol (CLIENT → SERVER):
+        binary  : raw JPEG bytes for one canvas frame
+        text    : JSON control message
+                  {"type":"control","action":"start"}  — begin accumulating frames
+                  {"type":"control","action":"stop"}   — stop and flush if speech buffered
+
+    Protocol (SERVER → CLIENT):
+        text    : {"type":"status","speaking":bool,"score":float}
+                  (sent ~every 5 frames so the UI can show lip activity)
+        text    : {"type":"result","raw":"…","corrected":"…","status":"done"}
+        binary  : MP3 audio bytes (follows the "done" result message)
+        text    : {"type":"result","status":"error","message":"…"}
     """
     await ws.accept()
     client_id = id(ws)
-    print(f"[WS] Client {client_id} connected.", flush=True)
+    logger.info("[WS] Client %d connected.", client_id)
 
-    # Per-client queues
+    # Per-client pipeline queues (unchanged)
     clip_queue: asyncio.Queue = asyncio.Queue()
     nlp_queue:  asyncio.Queue = asyncio.Queue()
     tts_queue:  asyncio.Queue = asyncio.Queue()
     _client_queues[client_id] = (clip_queue, nlp_queue, tts_queue)
 
-    # Start worker tasks
+    # Start pipeline worker tasks
     tasks = [
         asyncio.create_task(vsr_worker(clip_queue, nlp_queue, ws)),
         asyncio.create_task(nlp_worker(nlp_queue, tts_queue, ws)),
         asyncio.create_task(tts_worker(tts_queue, ws)),
     ]
 
+    # Per-client segmenter (created fresh; destroyed on disconnect)
+    segmenter = LipMotionSegmenter(fps=20)
+    streaming  = False   # True while START has been sent and no STOP received
+    frame_seq  = 0       # frame counter for throttling status messages
+    STATUS_EVERY = 5     # send lip status JSON every N frames
+
     try:
         while True:
-            # Receive raw .webm bytes from the browser MediaRecorder
-            data = await ws.receive_bytes()
+            message = await ws.receive()
 
-            if not data:
-                continue
+            # ── Control text message ───────────────────────────────
+            if "text" in message:
+                try:
+                    ctrl = json.loads(message["text"])
+                except json.JSONDecodeError:
+                    continue
 
-            # Save to temp file with .mp4 extension (VSR accepts mp4/mpg)
-            tmp_fd, tmp_path = tempfile.mkstemp(suffix=".mp4")
-            try:
-                os.write(tmp_fd, data)
-            finally:
-                os.close(tmp_fd)
+                if ctrl.get("type") != "control":
+                    continue
 
-            print(
-                f"[WS] Received clip {len(data):,} bytes → {tmp_path}", flush=True
-            )
-            await clip_queue.put((tmp_path, tmp_path))
+                action = ctrl.get("action", "")
+
+                if action == "start":
+                    streaming = True
+                    segmenter.reset()
+                    frame_seq = 0
+                    logger.info("[WS] Client %d: streaming started.", client_id)
+
+                elif action == "stop":
+                    streaming = False
+                    logger.info("[WS] Client %d: streaming stopped.", client_id)
+                    # Force-flush whatever is buffered (even without silence timeout)
+                    # Only if there are frames worth sending
+                    if segmenter._speech_active and len(segmenter._frame_buffer) >= segmenter.min_speech_frames:
+                        frames_np, n = segmenter._flush()
+                        await _save_and_enqueue(frames_np, n, clip_queue, client_id)
+                    segmenter.reset()
+
+            # ── Binary JPEG frame ──────────────────────────────────
+            elif "bytes" in message:
+                if not streaming:
+                    continue  # ignore frames when not started
+
+                jpeg_bytes = message["bytes"]
+                if not jpeg_bytes:
+                    continue
+
+                frame_seq += 1
+
+                # Push frame to segmenter
+                result = segmenter.push_frame(jpeg_bytes)
+
+                # Send lip motion status to frontend (throttled)
+                if frame_seq % STATUS_EVERY == 0:
+                    try:
+                        await ws.send_text(json.dumps({
+                            "type":     "status",
+                            "speaking": segmenter.is_speaking,
+                            "score":    round(segmenter.last_score, 5),
+                        }))
+                    except Exception:
+                        pass
+
+                # Utterance complete!
+                if result is not None:
+                    frames_np, n = result
+                    await _save_and_enqueue(frames_np, n, clip_queue, client_id)
+                    # segmenter already reset its internal state after _flush();
+                    # call public reset() to reinitialise for next utterance
+                    segmenter.reset()
+                    logger.info("[WS] Client %d: listening for next utterance.", client_id)
 
     except WebSocketDisconnect:
-        print(f"[WS] Client {client_id} disconnected.", flush=True)
+        logger.info("[WS] Client %d disconnected.", client_id)
     except Exception as exc:
-        print(f"[WS] Unexpected error: {exc}", flush=True)
+        logger.error("[WS] Unexpected error for client %d: %s", client_id, exc)
     finally:
-        # Send sentinel to drain the pipeline gracefully
-        await clip_queue.put(None)
+        segmenter.close()
 
-        # Wait for all workers to finish processing in-flight clips
+        # Drain the pipeline gracefully
+        await clip_queue.put(None)
         try:
             await asyncio.wait_for(
                 asyncio.gather(*tasks, return_exceptions=True),
@@ -266,7 +333,40 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                 t.cancel()
 
         _client_queues.pop(client_id, None)
-        print(f"[WS] Pipeline for client {client_id} shut down.", flush=True)
+        logger.info("[WS] Pipeline for client %d shut down.", client_id)
+
+
+# ──────────────────────────────────────────────────────────────────
+# Helper: save frame array to a temp mp4 and push to clip_queue
+# ──────────────────────────────────────────────────────────────────
+async def _save_and_enqueue(
+    frames_np: "np.ndarray",  # type: ignore[name-defined]  # noqa: F821
+    n_frames: int,
+    clip_queue: asyncio.Queue,
+    client_id: int,
+) -> None:
+    """
+    Save numpy frames to a temp .mp4 file in an executor thread
+    (VideoWriter is blocking), then push the path to clip_queue.
+    """
+    loop = asyncio.get_event_loop()
+
+    tmp_fd, tmp_path = tempfile.mkstemp(suffix=".mp4")
+    os.close(tmp_fd)
+
+    try:
+        await loop.run_in_executor(
+            None,
+            lambda: frames_to_mp4(frames_np, tmp_path, fps=20),
+        )
+        logger.info(
+            "[WS] Client %d: utterance clip saved (%d frames) → %s",
+            client_id, n_frames, tmp_path,
+        )
+        await clip_queue.put((tmp_path, tmp_path))
+    except Exception as exc:
+        logger.error("[WS] Client %d: failed to save clip: %s", client_id, exc)
+        _remove(tmp_path)
 
 
 # ──────────────────────────────────────────────────────────────────

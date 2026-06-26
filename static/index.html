@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SilentVoice — Lip Reading to Speech</title>
-  <meta name="description" content="SilentVoice converts silent lip movements into natural speech using AI-powered visual speech recognition." />
+  <title>SilentVoice — Auto Lip-Reading</title>
+  <meta name="description" content="SilentVoice automatically detects when you speak and converts silent lip movements into natural speech using AI-powered visual speech recognition." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <style>
@@ -188,14 +188,17 @@
       display: block;
     }
 
-    /* lip detection overlay badge */
+    /* hidden canvas used for frame capture */
+    #capture-canvas { display: none; }
+
+    /* ── Lip Activity Meter ─────────────────────────────────────── */
     .lip-badge {
       position: absolute;
       top: 12px; left: 12px;
       display: flex;
       align-items: center;
       gap: 8px;
-      background: rgba(8,11,17,.75);
+      background: rgba(8,11,17,.8);
       backdrop-filter: blur(8px);
       border: 1px solid var(--border);
       border-radius: 999px;
@@ -204,60 +207,106 @@
       font-weight: 500;
       color: var(--text-2);
       letter-spacing: .03em;
+      transition: border-color .3s;
+    }
+
+    .lip-badge.speaking {
+      border-color: rgba(52, 211, 153, .5);
+      background: rgba(52,211,153,.08);
     }
 
     #lip-dot {
       width: 8px; height: 8px;
       border-radius: 50%;
+      background: var(--text-3);
+      transition: background .25s, box-shadow .25s;
+      flex-shrink: 0;
+    }
+
+    #lip-dot.active {
       background: var(--green);
-      box-shadow: 0 0 6px var(--green);
-      animation: pulse-green 2s ease-in-out infinite;
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse-green 1s ease-in-out infinite;
+    }
+
+    #lip-dot.idle {
+      background: var(--amber);
+      box-shadow: 0 0 6px var(--amber);
     }
 
     @keyframes pulse-green {
-      0%, 100% { box-shadow: 0 0 6px var(--green); opacity: 1; }
-      50%       { box-shadow: 0 0 14px var(--green); opacity: .7; }
+      0%, 100% { box-shadow: 0 0 6px var(--green); }
+      50%       { box-shadow: 0 0 16px var(--green); }
     }
 
-    /* recording ring */
-    .camera-wrap.recording::after {
-      content: '';
-      position: absolute; inset: 0;
-      border: 3px solid var(--red);
-      border-radius: 0;
-      animation: rec-pulse 1s ease-in-out infinite;
-      pointer-events: none;
+    /* score bar inside badge */
+    #score-bar-wrap {
+      width: 50px; height: 4px;
+      background: rgba(255,255,255,.1);
+      border-radius: 2px;
+      overflow: hidden;
     }
 
-    @keyframes rec-pulse {
-      0%, 100% { opacity: 1; }
-      50%       { opacity: .35; }
+    #score-bar {
+      height: 100%;
+      width: 0%;
+      border-radius: 2px;
+      background: var(--green);
+      transition: width .15s ease, background .25s;
     }
 
-    /* REC indicator */
-    .rec-tag {
+    /* streaming indicator badge */
+    .stream-tag {
       position: absolute;
       top: 12px; right: 12px;
       display: none;
       align-items: center;
       gap: 6px;
-      background: rgba(248,113,113,.15);
-      border: 1px solid var(--red);
+      background: rgba(56,189,248,.15);
+      border: 1px solid rgba(56,189,248,.4);
       border-radius: 999px;
       padding: 4px 10px;
       font-size: .7rem;
       font-weight: 700;
-      color: var(--red);
+      color: var(--accent);
       letter-spacing: .06em;
     }
 
-    .rec-tag.visible { display: flex; }
+    .stream-tag.visible { display: flex; }
 
-    .rec-dot {
+    .stream-dot {
       width: 6px; height: 6px;
       border-radius: 50%;
-      background: var(--red);
+      background: var(--accent);
       animation: blink 1s step-start infinite;
+    }
+
+    /* utterance detected flash */
+    .camera-wrap.utterance-flash::after {
+      content: '';
+      position: absolute; inset: 0;
+      border: 3px solid var(--green);
+      animation: flash-once .5s ease-out forwards;
+      pointer-events: none;
+    }
+
+    @keyframes flash-once {
+      0%   { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    /* speaking ring */
+    .camera-wrap.speaking::after {
+      content: '';
+      position: absolute; inset: 0;
+      border: 3px solid rgba(52,211,153,.6);
+      animation: speak-ring 1.2s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    @keyframes speak-ring {
+      0%, 100% { opacity: .4; }
+      50%       { opacity: 1; }
     }
 
     @keyframes blink { 50% { opacity: 0; } }
@@ -280,12 +329,14 @@
       border-radius: var(--radius-sm);
       padding: 10px 16px;
       font-size: .82rem;
+      transition: border-color .3s;
     }
 
     #status-icon { font-size: 1rem; }
     #status-text { color: var(--text-1); font-weight: 500; }
 
-    .status-bar.recording  { border-color: rgba(248,113,113,.4); }
+    .status-bar.streaming  { border-color: rgba(56,189,248,.4); }
+    .status-bar.speaking   { border-color: rgba(52,211,153,.5); }
     .status-bar.processing { border-color: rgba(251,191,36,.35); }
     .status-bar.done       { border-color: rgba(52,211,153,.35); }
 
@@ -297,7 +348,7 @@
     .dot:nth-child(3) { animation-delay: .3s; }
     @keyframes dot-bounce { 0%,80%,100% { transform: scale(.6); opacity:.4; } 40% { transform: scale(1); opacity:1; } }
 
-    /* Record button */
+    /* Start/Stop button */
     #record-btn {
       position: relative;
       width: 100%;
@@ -333,28 +384,18 @@
     #record-btn.active {
       background: linear-gradient(135deg, #f87171, #fb923c);
       box-shadow: 0 4px 20px rgba(248,113,113,.4);
-      animation: btn-pulse 1.2s ease-in-out infinite;
+      animation: btn-pulse 1.4s ease-in-out infinite;
     }
 
     @keyframes btn-pulse {
       0%, 100% { box-shadow: 0 4px 20px rgba(248,113,113,.4); }
-      50%       { box-shadow: 0 4px 32px rgba(248,113,113,.65); }
+      50%       { box-shadow: 0 4px 32px rgba(248,113,113,.7); }
     }
 
     #record-btn:disabled {
       opacity: .5;
       cursor: not-allowed;
       animation: none;
-    }
-
-    /* hold progress bar */
-    #hold-bar {
-      position: absolute;
-      bottom: 0; left: 0;
-      height: 3px;
-      background: rgba(255,255,255,.5);
-      width: 0%;
-      transition: width linear;
     }
 
     /* shortcut hint */
@@ -371,6 +412,48 @@
       padding: 1px 6px;
       font-family: 'JetBrains Mono', monospace;
       font-size: .7rem;
+    }
+
+    /* ── Lip Meter panel ────────────────────────────────────────── */
+    .meter-panel {
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    .meter-label {
+      font-size: .72rem;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      white-space: nowrap;
+    }
+
+    .meter-track {
+      flex: 1;
+      height: 6px;
+      background: var(--bg-3);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    #meter-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--green));
+      transition: width .12s ease;
+    }
+
+    #meter-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .7rem;
+      color: var(--text-3);
+      min-width: 52px;
+      text-align: right;
     }
 
     /* ── Sidebar panel ──────────────────────────────────────────── */
@@ -505,7 +588,7 @@
     }
 
     .history-list:empty::after {
-      content: 'No history yet…';
+      content: 'No utterances yet…';
       display: block;
       padding: 16px 20px;
       font-size: .78rem;
@@ -541,7 +624,7 @@
       color: var(--text-3);
     }
 
-    /* ── Notification toast ─────────────────────────────────────── */
+    /* ── Toast ──────────────────────────────────────────────────── */
     #toast {
       position: fixed;
       bottom: 28px; right: 28px;
@@ -564,6 +647,22 @@
       opacity: 1;
       transform: none;
     }
+
+    /* ── Auto-mode notice badge ─────────────────────────────────── */
+    .auto-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: .68rem;
+      font-weight: 600;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: rgba(56,189,248,.1);
+      border: 1px solid rgba(56,189,248,.25);
+      border-radius: 999px;
+      padding: 3px 10px;
+    }
   </style>
 </head>
 <body>
@@ -575,7 +674,7 @@
       <div class="logo-icon">👄</div>
       <div>
         <h1>SilentVoice</h1>
-        <span>Visual Speech Recognition</span>
+        <span>Auto Visual Speech Recognition</span>
       </div>
     </div>
     <div id="ws-status">
@@ -595,18 +694,36 @@
         <div class="card-header">
           <span class="icon">📹</span>
           Live Feed
+          <span style="margin-left:auto;" class="auto-badge">⚡ Auto-Detect</span>
         </div>
         <div class="camera-wrap" id="camera-wrap">
           <video id="video-feed" autoplay muted playsinline></video>
-          <div class="lip-badge">
+          <!-- hidden canvas for frame capture -->
+          <canvas id="capture-canvas"></canvas>
+          <!-- Lip motion badge -->
+          <div class="lip-badge" id="lip-badge">
             <div id="lip-dot"></div>
-            Lip Detection Active
+            <span id="lip-status">Waiting…</span>
+            <div id="score-bar-wrap">
+              <div id="score-bar"></div>
+            </div>
           </div>
-          <div class="rec-tag" id="rec-tag">
-            <div class="rec-dot"></div>
-            REC
+          <!-- Streaming indicator -->
+          <div class="stream-tag" id="stream-tag">
+            <div class="stream-dot"></div>
+            LIVE
           </div>
         </div>
+
+        <!-- Lip motion meter -->
+        <div class="meter-panel">
+          <span class="meter-label">Lip motion</span>
+          <div class="meter-track">
+            <div id="meter-fill"></div>
+          </div>
+          <span id="meter-value">—</span>
+        </div>
+
         <!-- Controls inside same card -->
         <div class="controls-area">
 
@@ -621,14 +738,13 @@
             </div>
           </div>
 
-          <!-- Record button -->
+          <!-- Start/Stop button -->
           <button id="record-btn" disabled>
-            <span id="btn-label">🎙 Start Recording</span>
-            <div id="hold-bar"></div>
+            <span id="btn-label">🎙 Start Listening</span>
           </button>
 
           <p class="shortcut-hint">
-            Press <kbd>Space</kbd> to toggle &nbsp;·&nbsp; max 10 sec per clip
+            Press <kbd>Space</kbd> to toggle &nbsp;·&nbsp; auto-detects utterances
           </p>
 
         </div>
@@ -693,8 +809,8 @@
 
   <!-- ── Footer ── -->
   <footer>
-    <span>SilentVoice v2.0 · Phase 1</span>
-    <span id="clip-count">0 clips processed</span>
+    <span>SilentVoice v3.0 · Auto-Segmentation</span>
+    <span id="clip-count">0 utterances processed</span>
   </footer>
 
 </div>
@@ -706,39 +822,51 @@
 'use strict';
 
 // ── Refs ──────────────────────────────────────────────────────────
-const videoEl       = document.getElementById('video-feed');
-const cameraWrap    = document.getElementById('camera-wrap');
-const recTag        = document.getElementById('rec-tag');
-const recordBtn     = document.getElementById('record-btn');
-const btnLabel      = document.getElementById('btn-label');
-const holdBar       = document.getElementById('hold-bar');
-const statusBar     = document.getElementById('status-bar');
-const statusIcon    = document.getElementById('status-icon');
-const statusText    = document.getElementById('status-text');
-const rawOut        = document.getElementById('raw-output');
-const correctedOut  = document.getElementById('corrected-output');
-const audioPlayer   = document.getElementById('audio-player');
-const playBtn       = document.getElementById('play-btn');
-const audioTitle    = document.getElementById('audio-title');
-const waveform      = document.getElementById('waveform');
-const historyList   = document.getElementById('history-list');
-const clipCountEl   = document.getElementById('clip-count');
-const wsDot         = document.getElementById('ws-dot');
-const wsLabel       = document.getElementById('ws-label');
-const toast         = document.getElementById('toast');
+const videoEl      = document.getElementById('video-feed');
+const captureCanvas= document.getElementById('capture-canvas');
+const cameraWrap   = document.getElementById('camera-wrap');
+const streamTag    = document.getElementById('stream-tag');
+const recordBtn    = document.getElementById('record-btn');
+const btnLabel     = document.getElementById('btn-label');
+const statusBar    = document.getElementById('status-bar');
+const statusIcon   = document.getElementById('status-icon');
+const statusText   = document.getElementById('status-text');
+const rawOut       = document.getElementById('raw-output');
+const correctedOut = document.getElementById('corrected-output');
+const audioPlayer  = document.getElementById('audio-player');
+const playBtn      = document.getElementById('play-btn');
+const audioTitle   = document.getElementById('audio-title');
+const waveform     = document.getElementById('waveform');
+const historyList  = document.getElementById('history-list');
+const clipCountEl  = document.getElementById('clip-count');
+const wsDot        = document.getElementById('ws-dot');
+const wsLabel      = document.getElementById('ws-label');
+const toast        = document.getElementById('toast');
+// Lip meter refs
+const lipBadge     = document.getElementById('lip-badge');
+const lipDot       = document.getElementById('lip-dot');
+const lipStatus    = document.getElementById('lip-status');
+const scoreBar     = document.getElementById('score-bar');
+const meterFill    = document.getElementById('meter-fill');
+const meterValue   = document.getElementById('meter-value');
 
 // ── State ─────────────────────────────────────────────────────────
-let ws            = null;
-let mediaRecorder = null;
-let chunks        = [];
-let isRecording   = false;
-let waitingResp   = false;
-let clipCount     = 0;
-let currentAudio  = null;
-let currentAudioUrl = null;
+let ws             = null;
+let isStreaming    = false;
+let clipCount      = 0;
+let currentAudio   = null;
+let currentAudioUrl= null;
+let rafHandle      = null;      // requestAnimationFrame handle
+let captureCtx     = null;      // 2D context for capture canvas
 
-const MAX_CLIP_MS  = 10_000;  // 10 second safety cap
-let   maxTimer     = null;
+// Frame-send target: 15 fps (one frame every ~66 ms)
+const TARGET_FPS      = 15;
+const FRAME_INTERVAL  = 1000 / TARGET_FPS;
+let   lastFrameTime   = 0;
+
+// Threshold used client-side only for the visual bar scaling
+// Real threshold enforcement is on the server; this just scales the meter.
+const SCORE_DISPLAY_MAX = 0.015;  // scores above this → bar at 100%
 
 // ── Toast helper ──────────────────────────────────────────────────
 let toastTimer = null;
@@ -751,35 +879,77 @@ function showToast(msg, dur = 3000) {
 
 // ── Status helper ─────────────────────────────────────────────────
 const STATUS = {
-  ready:      { icon: '🟢', text: 'Ready',          cls: ''           },
-  recording:  { icon: '🔴', text: 'Recording…',     cls: 'recording'  },
-  processing: { icon: '⏳', text: 'Processing…',    cls: 'processing' },
-  done:       { icon: '✅', text: 'Done',            cls: 'done'       },
-  error:      { icon: '⚠️',  text: 'Error',          cls: ''           },
-  init:       { icon: '⚡', text: 'Initialising…',  cls: ''           },
-  connecting: { icon: '🔌', text: 'Connecting…',    cls: ''           },
+  ready:      { icon: '🟢', text: 'Ready — click Start',   cls: ''           },
+  streaming:  { icon: '📡', text: 'Listening…',            cls: 'streaming'  },
+  speaking:   { icon: '🗣️', text: 'Speech detected!',      cls: 'speaking'   },
+  processing: { icon: '⏳', text: 'Processing utterance…', cls: 'processing' },
+  done:       { icon: '✅', text: 'Done — listening again',cls: 'done'       },
+  error:      { icon: '⚠️', text: 'Error',                 cls: ''           },
+  init:       { icon: '⚡', text: 'Initialising…',         cls: ''           },
+  connecting: { icon: '🔌', text: 'Connecting…',           cls: ''           },
 };
 
-function setStatus(key) {
+function setStatus(key, extra) {
   const s = STATUS[key] || STATUS.ready;
   statusBar.className = 'status-bar ' + s.cls;
   statusIcon.textContent = s.icon;
-  statusText.textContent = s.text;
+  statusText.textContent = extra || s.text;
+}
+
+// ── Lip motion display ────────────────────────────────────────────
+function updateLipUI(speaking, score) {
+  // Badge dot
+  if (speaking) {
+    lipDot.className = 'active';
+    lipBadge.classList.add('speaking');
+    lipStatus.textContent = 'Speaking';
+    cameraWrap.classList.add('speaking');
+  } else {
+    lipDot.className = 'idle';
+    lipBadge.classList.remove('speaking');
+    lipStatus.textContent = 'Listening';
+    cameraWrap.classList.remove('speaking');
+  }
+
+  // Score bar inside badge
+  const pct = Math.min(100, (score / SCORE_DISPLAY_MAX) * 100);
+  scoreBar.style.width = pct + '%';
+  scoreBar.style.background = speaking ? 'var(--green)' : 'var(--amber)';
+
+  // Bottom meter strip
+  meterFill.style.width = pct + '%';
+  meterValue.textContent = score.toFixed(4);
+}
+
+function resetLipUI() {
+  lipDot.className = '';
+  lipBadge.classList.remove('speaking');
+  lipStatus.textContent = 'Waiting…';
+  scoreBar.style.width = '0%';
+  meterFill.style.width = '0%';
+  meterValue.textContent = '—';
+  cameraWrap.classList.remove('speaking');
 }
 
 // ── Camera ────────────────────────────────────────────────────────
 async function startCamera() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
-      video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+      video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
       audio: false,
     });
     videoEl.srcObject = stream;
+    await videoEl.play();
+
+    // Size capture canvas to match video intrinsic size (use 320×240 for perf)
+    captureCanvas.width  = 320;
+    captureCanvas.height = 240;
+    captureCtx = captureCanvas.getContext('2d');
+
     return stream;
   } catch (err) {
     showToast('⚠️ Camera access denied — check browser permissions.');
-    setStatus('error');
-    statusText.textContent = 'Camera unavailable';
+    setStatus('error', 'Camera unavailable');
     return null;
   }
 }
@@ -790,7 +960,8 @@ function connectWS() {
   wsDot.className = '';
   wsLabel.textContent = 'Connecting…';
 
-  ws = new WebSocket('ws://localhost:8000/ws');
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/ws`);
   ws.binaryType = 'arraybuffer';
 
   ws.onopen = () => {
@@ -805,8 +976,8 @@ function connectWS() {
     wsDot.className = '';
     wsLabel.textContent = 'Disconnected';
     recordBtn.disabled = true;
-    setStatus('error');
-    statusText.textContent = 'Disconnected — retrying in 3s…';
+    stopStreaming();
+    setStatus('error', 'Disconnected — retrying in 3 s…');
     showToast('🔴 Server disconnected. Reconnecting…', 5000);
     setTimeout(connectWS, 3000);
   };
@@ -817,23 +988,33 @@ function connectWS() {
 
   ws.onmessage = (event) => {
     if (typeof event.data === 'string') {
-      // JSON payload
       try {
         const msg = JSON.parse(event.data);
 
-        if (msg.status === 'done') {
-          rawOut.textContent = msg.raw || '—';
-          rawOut.classList.add('populated');
-          correctedOut.textContent = msg.corrected || '—';
-          correctedOut.classList.add('populated');
-          setStatus('done');
-          // audio bytes arrive in next message — handled below
-        } else if (msg.status === 'error') {
-          setStatus('error');
-          statusText.textContent = 'Error: ' + (msg.message || 'unknown');
-          waitingResp = false;
-          showToast('❌ ' + (msg.message || 'Pipeline error'));
+        if (msg.type === 'status') {
+          // Lip activity update from server
+          updateLipUI(msg.speaking, msg.score);
+          if (msg.speaking && isStreaming) setStatus('speaking');
+          else if (isStreaming)            setStatus('streaming');
         }
+
+        else if (msg.type === 'result') {
+          if (msg.status === 'done') {
+            rawOut.textContent = msg.raw || '—';
+            rawOut.classList.add('populated');
+            correctedOut.textContent = msg.corrected || '—';
+            correctedOut.classList.add('populated');
+            setStatus('processing');
+            // Trigger utterance flash on video border
+            cameraWrap.classList.remove('utterance-flash');
+            void cameraWrap.offsetWidth; // force reflow
+            cameraWrap.classList.add('utterance-flash');
+          } else if (msg.status === 'error') {
+            setStatus('error', 'Error: ' + (msg.message || 'unknown'));
+            showToast('❌ ' + (msg.message || 'Pipeline error'));
+          }
+        }
+
       } catch (e) {
         console.error('Bad JSON from server', e);
       }
@@ -841,10 +1022,12 @@ function connectWS() {
       // Binary → MP3 audio
       const blob = new Blob([event.data], { type: 'audio/mpeg' });
       playAudio(blob);
-      waitingResp = false;
       clipCount++;
-      clipCountEl.textContent = `${clipCount} clip${clipCount !== 1 ? 's' : ''} processed`;
+      clipCountEl.textContent = `${clipCount} utterance${clipCount !== 1 ? 's' : ''} processed`;
       addHistory(rawOut.textContent, correctedOut.textContent);
+      // Back to streaming state after result lands
+      if (isStreaming) setStatus('streaming');
+      else             setStatus('done');
     }
   };
 }
@@ -868,8 +1051,7 @@ function playAudio(blob) {
   playBtn.disabled = false;
   playBtn.textContent = '⏸';
 
-  currentAudio.play().catch(e => {
-    // Autoplay blocked — user can press play manually
+  currentAudio.play().catch(() => {
     playBtn.textContent = '▶';
     showToast('🔊 Tap play to hear the audio');
   });
@@ -877,114 +1059,104 @@ function playAudio(blob) {
 
 playBtn.addEventListener('click', () => {
   if (!currentAudio) return;
-  if (currentAudio.paused) {
-    currentAudio.play();
-  } else {
-    currentAudio.pause();
-  }
+  if (currentAudio.paused) currentAudio.play();
+  else                     currentAudio.pause();
 });
 
-// ── Recording ─────────────────────────────────────────────────────
-function startRecording(stream) {
-  if (isRecording || waitingResp) return;
-  isRecording = true;
-  chunks = [];
+// ── Continuous frame streaming ────────────────────────────────────
+/**
+ * requestAnimationFrame loop.
+ * Captures a canvas frame → JPEG blob → ArrayBuffer → WebSocket binary message.
+ * Throttled to TARGET_FPS to keep bandwidth sane.
+ */
+function frameLoop(timestamp) {
+  if (!isStreaming) return;  // loop stops here when streaming is off
 
-  // Prefer webm/vp9, fallback to plain webm
-  const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
-    ? 'video/webm;codecs=vp9'
-    : 'video/webm';
+  rafHandle = requestAnimationFrame(frameLoop);
 
-  mediaRecorder = new MediaRecorder(stream, { mimeType });
-  mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-  mediaRecorder.onstop = sendClip;
-  mediaRecorder.start(200); // collect chunks every 200 ms
+  if (timestamp - lastFrameTime < FRAME_INTERVAL) return;  // throttle
+  lastFrameTime = timestamp;
+
+  if (!captureCtx || !videoEl.videoWidth) return;  // video not ready
+
+  // Draw current video frame to off-screen canvas (mirrored to match display)
+  captureCtx.save();
+  captureCtx.translate(captureCanvas.width, 0);
+  captureCtx.scale(-1, 1);
+  captureCtx.drawImage(videoEl, 0, 0, captureCanvas.width, captureCanvas.height);
+  captureCtx.restore();
+
+  // Encode as JPEG (quality 0.75 — good balance between detail and bandwidth)
+  captureCanvas.toBlob(
+    (blob) => {
+      if (!blob || !ws || ws.readyState !== WebSocket.OPEN) return;
+      blob.arrayBuffer().then((buf) => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(buf);
+        }
+      });
+    },
+    'image/jpeg',
+    0.75,
+  );
+}
+
+function startStreaming() {
+  if (isStreaming || !ws || ws.readyState !== WebSocket.OPEN) return;
+  isStreaming = true;
+  lastFrameTime = 0;
+
+  // Tell server to begin accumulating
+  ws.send(JSON.stringify({ type: 'control', action: 'start' }));
 
   // UI
-  cameraWrap.classList.add('recording');
-  recTag.classList.add('visible');
+  streamTag.classList.add('visible');
   recordBtn.classList.add('active');
-  btnLabel.textContent = '⏹ Stop Recording';
-  setStatus('recording');
+  btnLabel.textContent = '⏹ Stop Listening';
+  setStatus('streaming');
+  lipDot.className = 'idle';
+  lipStatus.textContent = 'Listening';
+  showToast('📡 Streaming — speak naturally, system detects utterances', 4000);
 
-  // Progress bar animation
-  holdBar.style.transition = 'none';
-  holdBar.style.width = '0%';
-  requestAnimationFrame(() => {
-    holdBar.style.transition = `width ${MAX_CLIP_MS}ms linear`;
-    holdBar.style.width = '100%';
-  });
-
-  // Safety cap
-  maxTimer = setTimeout(stopRecording, MAX_CLIP_MS);
+  // Start frame loop
+  rafHandle = requestAnimationFrame(frameLoop);
 }
 
-function stopRecording() {
-  if (!isRecording) return;
-  isRecording = false;
-  clearTimeout(maxTimer);
+function stopStreaming() {
+  if (!isStreaming) return;
+  isStreaming = false;
 
-  mediaRecorder.stop();
+  // Cancel rAF loop
+  if (rafHandle) {
+    cancelAnimationFrame(rafHandle);
+    rafHandle = null;
+  }
+
+  // Tell server to flush whatever was buffered
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'control', action: 'stop' }));
+  }
 
   // UI reset
-  cameraWrap.classList.remove('recording');
-  recTag.classList.remove('visible');
-  recordBtn.classList.add('active');  // keep active colour until sent
-  btnLabel.textContent = '⏳ Processing…';
-  holdBar.style.width = '0%';
-  holdBar.style.transition = 'none';
-}
-
-function sendClip() {
-  if (chunks.length === 0) {
-    resetRecordBtn();
-    return;
-  }
-
-  const blob = new Blob(chunks, { type: 'video/webm' });
-  chunks = [];
-
-  if (!ws || ws.readyState !== WebSocket.OPEN) {
-    showToast('⚠️ Not connected — clip discarded');
-    resetRecordBtn();
-    return;
-  }
-
-  blob.arrayBuffer().then((buf) => {
-    ws.send(buf);
-    waitingResp = true;
-    setStatus('processing');
-    resetRecordBtn();
-    showToast('📤 Clip sent — analysing…', 5000);
-  });
-}
-
-function resetRecordBtn() {
+  streamTag.classList.remove('visible');
   recordBtn.classList.remove('active');
-  btnLabel.textContent = '🎙 Start Recording';
-  if (!waitingResp) setStatus('ready');
+  btnLabel.textContent = '🎙 Start Listening';
+  resetLipUI();
+  setStatus('ready');
 }
 
 // ── Toggle on click ───────────────────────────────────────────────
-let cameraStream = null;
-
 recordBtn.addEventListener('click', () => {
-  if (isRecording) {
-    stopRecording();
-  } else if (!waitingResp) {
-    startRecording(cameraStream);
-  }
+  if (isStreaming) stopStreaming();
+  else             startStreaming();
 });
 
 // Space bar shortcut
 document.addEventListener('keydown', (e) => {
   if (e.code === 'Space' && e.target === document.body) {
     e.preventDefault();
-    if (isRecording) {
-      stopRecording();
-    } else if (!waitingResp && !recordBtn.disabled) {
-      startRecording(cameraStream);
-    }
+    if (isStreaming) stopStreaming();
+    else if (!recordBtn.disabled) startStreaming();
   }
 });
 
@@ -1012,8 +1184,8 @@ function escHtml(str) {
 
 // ── Boot ──────────────────────────────────────────────────────────
 (async () => {
-  cameraStream = await startCamera();
-  if (cameraStream) {
+  const stream = await startCamera();
+  if (stream) {
     setStatus('connecting');
     connectWS();
   }
