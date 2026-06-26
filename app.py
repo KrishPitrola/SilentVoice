@@ -1,144 +1,295 @@
 """
-app.py — SilentVoice FastAPI backend with WebSocket inference endpoint.
+app.py — SilentVoice Phase 1: FastAPI WebSocket backend
+        with async pipeline (asyncio.Queue) for clip-based lip-reading.
 
-Clients send JPEG frames over WebSocket; the server runs the full LipNet
-pipeline and streams JSON predictions back.
+Pipeline:
+    Browser MediaRecorder (.webm blob)
+    ↓ WebSocket (binary)
+    clip_queue
+    ↓ VSR worker  (MPC001VSR.transcribe)      — threadpool
+    nlp_queue
+    ↓ NLP worker  (NLPCorrector.correct)      — threadpool
+    tts_queue
+    ↓ TTS worker  (TTSEngine.speak_to_file)   — threadpool
+    ↓ JSON text + raw MP3 bytes → WebSocket
 
 Run with:
-    python app.py
-    or: uvicorn app:app --host 0.0.0.0 --port 8000 --reload
-
-Static frontend (if present) is served from ./static/
+    uvicorn app:app --host 0.0.0.0 --port 8000
+    or: python app.py
 """
 
-import json
-import random
+from __future__ import annotations
 
-import cv2
-import numpy as np
-import torch
+import asyncio
+import json
+import os
+import tempfile
+from pathlib import Path
+
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 
-from modules.lip_extractor import LipExtractor
-from modules.frame_buffer import FrameBuffer
-from modules.sequence_preprocessor import SequencePreprocessor
-from models.vsr_model import VisualSpeechRecognitionModel
-from vocab import ctc_greedy_decode
-from fallback_mapper import FallbackMapper
-
-import time 
-_last_phrase = ""
-_last_time = 0
-COOLDOWN_SEC = 3
+from auto_avsr_wrapper import AutoAVSRWrapper
+from nlp_corrector import NLPCorrector
+from tts_engine import TTSEngine
 
 # ──────────────────────────────────────────────────────────────────
-# Global pipeline components (loaded once at startup)
+# App + global state
 # ──────────────────────────────────────────────────────────────────
-print("Loading LipNet model...")
-model = VisualSpeechRecognitionModel(vocab_size=28, lipnet_mode=True)
-model.load_pretrained("weights/lipnet_overlap.pt")
-model.eval()
-print("Model ready.\n")
+app = FastAPI(title="SilentVoice API", version="2.0.0")
 
-lip_extractor = LipExtractor()
-frame_buffer  = FrameBuffer()
-preprocessor  = SequencePreprocessor()
-mapper        = FallbackMapper()
+# Models are populated at startup
+vsr: AutoAVSRWrapper | None = None
+nlp: NLPCorrector | None = None
+tts: TTSEngine | None = None
 
-# ──────────────────────────────────────────────────────────────────
-# FastAPI app
-# ──────────────────────────────────────────────────────────────────
-app = FastAPI(title="SilentVoice API", version="1.0.0")
+# Each active WebSocket gets its own set of three queues so multiple
+# clients can be served independently.  The queues are keyed by the
+# WebSocket object itself.
+ClientQueues = tuple[asyncio.Queue, asyncio.Queue, asyncio.Queue]
+_client_queues: dict[int, ClientQueues] = {}
 
 
 # ──────────────────────────────────────────────────────────────────
-# WebSocket inference endpoint
+# Startup / shutdown
+# ──────────────────────────────────────────────────────────────────
+@app.on_event("startup")
+async def load_models() -> None:
+    """Load all three blocking models once, in executor threads."""
+    global vsr, nlp, tts
+    loop = asyncio.get_event_loop()
+
+    print("[startup] Loading AutoAVSRWrapper …", flush=True)
+    vsr = await loop.run_in_executor(None, AutoAVSRWrapper)
+    print("[startup] AutoAVSRWrapper ready.", flush=True)
+
+    print("[startup] Loading NLPCorrector …", flush=True)
+    nlp = await loop.run_in_executor(None, NLPCorrector)
+    print("[startup] NLPCorrector ready.", flush=True)
+
+    print("[startup] Loading TTSEngine …", flush=True)
+    tts = await loop.run_in_executor(None, TTSEngine)
+    print("[startup] TTSEngine ready.", flush=True)
+
+    print("[startup] All models loaded — server is ready.\n", flush=True)
+
+
+# ──────────────────────────────────────────────────────────────────
+# Worker coroutines (one set per client)
+# ──────────────────────────────────────────────────────────────────
+async def vsr_worker(
+    clip_queue: asyncio.Queue,
+    nlp_queue: asyncio.Queue,
+    ws: WebSocket,
+) -> None:
+    """Pull video paths from clip_queue, run VSR in executor, push to nlp_queue."""
+    loop = asyncio.get_event_loop()
+    while True:
+        item = await clip_queue.get()
+        if item is None:          # sentinel → shut down
+            await nlp_queue.put(None)
+            clip_queue.task_done()
+            return
+
+        video_path, raw_name = item
+        try:
+            raw_text: str = await loop.run_in_executor(
+                None, vsr.transcribe, video_path
+            )
+            print(f"[VSR] {raw_text!r}", flush=True)
+            await nlp_queue.put((raw_text, video_path))
+        except Exception as exc:
+            print(f"[VSR] Error: {exc}", flush=True)
+            # Skip this clip — clean up temp file and send error to client
+            _remove(video_path)
+            try:
+                await ws.send_text(
+                    json.dumps({"status": "error", "message": str(exc)})
+                )
+            except Exception:
+                pass
+        finally:
+            clip_queue.task_done()
+
+
+async def nlp_worker(
+    nlp_queue: asyncio.Queue,
+    tts_queue: asyncio.Queue,
+    ws: WebSocket,
+) -> None:
+    """Pull (raw_text, video_path) from nlp_queue, correct, push to tts_queue."""
+    loop = asyncio.get_event_loop()
+    while True:
+        item = await nlp_queue.get()
+        if item is None:
+            await tts_queue.put(None)
+            nlp_queue.task_done()
+            return
+
+        raw_text, video_path = item
+        try:
+            corrected: str = await loop.run_in_executor(
+                None, nlp.correct, raw_text
+            )
+            print(f"[NLP] {corrected!r}", flush=True)
+            await tts_queue.put((raw_text, corrected, video_path))
+        except Exception as exc:
+            print(f"[NLP] Error: {exc}", flush=True)
+            _remove(video_path)
+            try:
+                await ws.send_text(
+                    json.dumps({"status": "error", "message": str(exc)})
+                )
+            except Exception:
+                pass
+        finally:
+            nlp_queue.task_done()
+
+
+async def tts_worker(
+    tts_queue: asyncio.Queue,
+    ws: WebSocket,
+) -> None:
+    """Pull (raw, corrected, video_path), synthesise speech, send results to ws."""
+    loop = asyncio.get_event_loop()
+    while True:
+        item = await tts_queue.get()
+        if item is None:
+            tts_queue.task_done()
+            return
+
+        raw_text, corrected, video_path = item
+        mp3_path: str | None = None
+        try:
+            mp3_path = await loop.run_in_executor(
+                None, tts.speak_to_file, corrected
+            )
+            print(f"[TTS] Audio written to {mp3_path!r}", flush=True)
+
+            # Read audio bytes before sending
+            audio_bytes = Path(mp3_path).read_bytes()
+
+            # 1️⃣  JSON metadata
+            payload = json.dumps(
+                {"raw": raw_text, "corrected": corrected, "status": "done"}
+            )
+            await ws.send_text(payload)
+
+            # 2️⃣  Raw MP3 bytes
+            await ws.send_bytes(audio_bytes)
+
+        except WebSocketDisconnect:
+            # Client left — just clean up and stop
+            pass
+        except Exception as exc:
+            print(f"[TTS] Error: {exc}", flush=True)
+            try:
+                await ws.send_text(
+                    json.dumps({"status": "error", "message": str(exc)})
+                )
+            except Exception:
+                pass
+        finally:
+            _remove(video_path)
+            if mp3_path:
+                _remove(mp3_path)
+            tts_queue.task_done()
+
+
+# ──────────────────────────────────────────────────────────────────
+# WebSocket endpoint
 # ──────────────────────────────────────────────────────────────────
 @app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
+async def websocket_endpoint(ws: WebSocket) -> None:
     """
-    Receive JPEG frames as raw bytes, run LipNet inference, stream JSON back.
+    Accept a WebSocket connection.
 
-    Per-frame response (always):
-        {'status': 'detected'} | {'status': 'no_face'}
-
-    When buffer full and prediction valid:
-        {'raw': str, 'phrase': str, 'confidence': int}
+    Protocol:
+        CLIENT → SERVER : raw .webm video bytes (one message per clip)
+        SERVER → CLIENT : text  {"raw": "...", "corrected": "...", "status": "done"}
+        SERVER → CLIENT : bytes (MP3 audio)
     """
-    await websocket.accept()
-    print("[WS] Client connected.")
+    await ws.accept()
+    client_id = id(ws)
+    print(f"[WS] Client {client_id} connected.", flush=True)
+
+    # Per-client queues
+    clip_queue: asyncio.Queue = asyncio.Queue()
+    nlp_queue:  asyncio.Queue = asyncio.Queue()
+    tts_queue:  asyncio.Queue = asyncio.Queue()
+    _client_queues[client_id] = (clip_queue, nlp_queue, tts_queue)
+
+    # Start worker tasks
+    tasks = [
+        asyncio.create_task(vsr_worker(clip_queue, nlp_queue, ws)),
+        asyncio.create_task(nlp_worker(nlp_queue, tts_queue, ws)),
+        asyncio.create_task(tts_worker(tts_queue, ws)),
+    ]
 
     try:
         while True:
-            # Receive raw JPEG bytes from client
-            data = await websocket.receive_bytes()
+            # Receive raw .webm bytes from the browser MediaRecorder
+            data = await ws.receive_bytes()
 
-            # Decode JPEG → OpenCV BGR frame
-            frame = cv2.imdecode(
-                np.frombuffer(data, dtype=np.uint8),
-                cv2.IMREAD_COLOR,
+            if not data:
+                continue
+
+            # Save to temp file with .mp4 extension (VSR accepts mp4/mpg)
+            tmp_fd, tmp_path = tempfile.mkstemp(suffix=".mp4")
+            try:
+                os.write(tmp_fd, data)
+            finally:
+                os.close(tmp_fd)
+
+            print(
+                f"[WS] Received clip {len(data):,} bytes → {tmp_path}", flush=True
             )
-            if frame is None:
-                await websocket.send_text(json.dumps({"status": "decode_error"}))
-                continue
-
-            # Run lip extraction (also draws bounding box on frame)
-            lip_crop = lip_extractor.extract_lips(frame)
-
-            if lip_crop is None:
-                await websocket.send_text(json.dumps({"status": "no_face"}))
-                continue
-
-            await websocket.send_text(json.dumps({"status": "detected"}))
-            frame_buffer.add_frame(lip_crop)
-
-            # Run inference when buffer is full (30 frames)
-            if frame_buffer.is_full():
-                try:
-                    sequence = frame_buffer.get_sequence()        # (30, 64, 128, 3)
-                    tensor   = preprocessor.preprocess(sequence)  # (1, 3, 30, 64, 128)
-
-                    with torch.no_grad():
-                        logits = model(tensor)                    # (30, 1, 28)
-
-                    decoded  = ctc_greedy_decode(logits)
-                    raw_text = decoded[0] if decoded else ""
-
-                    if raw_text and not mapper.is_garbage(raw_text):
-                        phrase = mapper.map(raw_text)
-                        global _last_phrase, _last_time
-                        now = time.time()
-                        if phrase == _last_phrase and (now - _last_time) < COOLDOWN_SEC:
-                            frame_buffer.buffer.clear()
-                            continue
-                        _last_phrase = phrase
-                        _last_time = now
-                        payload = {
-                            "raw": raw_text,
-                            "phrase": phrase,
-                            "confidence": random.randint(72, 91),
-                        }
-                        await websocket.send_text(json.dumps(payload))
-                        print(f"[WS] Predicted: '{raw_text}' → '{phrase}'")
-                except Exception as e:
-                    print(f"[WS] Inference error: {e}")
-
-                frame_buffer.buffer.clear()
+            await clip_queue.put((tmp_path, tmp_path))
 
     except WebSocketDisconnect:
-        print("[WS] Client disconnected.")
+        print(f"[WS] Client {client_id} disconnected.", flush=True)
+    except Exception as exc:
+        print(f"[WS] Unexpected error: {exc}", flush=True)
+    finally:
+        # Send sentinel to drain the pipeline gracefully
+        await clip_queue.put(None)
+
+        # Wait for all workers to finish processing in-flight clips
+        try:
+            await asyncio.wait_for(
+                asyncio.gather(*tasks, return_exceptions=True),
+                timeout=30.0,
+            )
+        except asyncio.TimeoutError:
+            for t in tasks:
+                t.cancel()
+
+        _client_queues.pop(client_id, None)
+        print(f"[WS] Pipeline for client {client_id} shut down.", flush=True)
 
 
 # ──────────────────────────────────────────────────────────────────
-# Static frontend (./static/index.html)  — mount LAST so /ws takes priority
+# Static frontend — mounted LAST so /ws takes priority
 # ──────────────────────────────────────────────────────────────────
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+_static_dir = Path(__file__).parent / "static"
+if _static_dir.exists():
+    app.mount("/", StaticFiles(directory=str(_static_dir), html=True), name="static")
+
+
+# ──────────────────────────────────────────────────────────────────
+# Helpers
+# ──────────────────────────────────────────────────────────────────
+def _remove(path: str) -> None:
+    """Silently delete a file."""
+    try:
+        os.remove(path)
+    except OSError:
+        pass
 
 
 # ──────────────────────────────────────────────────────────────────
 # Entry point
 # ──────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=False)
