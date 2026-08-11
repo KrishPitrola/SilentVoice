@@ -105,7 +105,7 @@ class LipMotionSegmenter:
         Per-frame lip movement score (mean pixel-distance of landmark
         positions vs. previous frame, normalised to [0,1] by image width).
         Score < threshold → frame is "silent".
-        Default: 0.003  (~0.3 % of frame width movement).
+        Default: 0.008  (~0.8 % of frame width movement).
     silence_frames : int
         Number of consecutive "silent" frames required before an utterance
         is declared complete and the buffer flushed.
@@ -120,22 +120,29 @@ class LipMotionSegmenter:
         Default: 600  (30 s at 20 fps).
     model_path : str | None
         Explicit path to face_landmarker.task.  If None, auto-detected.
+    debug : bool
+        If True, log per-frame motion score vs. threshold at DEBUG level.
+        Enable via logging.getLogger("lip_segmenter").setLevel(logging.DEBUG)
+        plus a handler, or pass debug=True to force a print-based fallback.
+        Default: False.
     """
 
     def __init__(
         self,
         fps: int = 20,
-        movement_threshold: float = 0.003,
+        movement_threshold: float = 0.008,
         silence_frames: int = 20,
         min_speech_frames: int = 15,
         max_buffer_frames: int = 600,
         model_path: str | None = None,
+        debug: bool = False,
     ) -> None:
         self.fps               = fps
         self.threshold         = movement_threshold
         self.silence_frames    = silence_frames
         self.min_speech_frames = min_speech_frames
         self.max_buffer_frames = max_buffer_frames
+        self.debug             = debug
 
         # Resolve model
         resolved = model_path or _find_model_asset()
@@ -208,6 +215,16 @@ class LipMotionSegmenter:
 
         is_moving = (lip_pts is not None) and (score >= self.threshold)
         self.is_speaking = is_moving
+
+        # ── Per-frame debug log (used to calibrate movement_threshold) ──
+        if self.debug:
+            face_flag = "FACE" if lip_pts is not None else "NOFACE"
+            state_flag = "MOVE" if is_moving else "SIL "
+            logger.debug(
+                "[LipSegmenter] f=%06d score=%.5f thr=%.5f %s %s buf=%d silent_run=%d",
+                self._frame_idx, score, self.threshold, face_flag, state_flag,
+                len(self._frame_buffer), self._silent_run,
+            )
 
         # Update previous landmark positions
         if lip_pts is not None:

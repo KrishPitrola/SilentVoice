@@ -27,7 +27,7 @@ class AutoAVSRPipeline(torch.nn.Module):
         args = argparse.Namespace()
         setattr(args, 'modality', 'video')
 
-        ckpt = torch.load(ckpt_path, map_location="cpu")
+        ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
         self.modelmodule = ModelModule(args)
         self.modelmodule.model.load_state_dict(ckpt)
         self.modelmodule.eval()

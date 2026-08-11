@@ -24,7 +24,6 @@ Run with:
     uvicorn app:app --host 0.0.0.0 --port 8000
     or: python app.py
 """
-
 from __future__ import annotations
 
 import asyncio
@@ -43,8 +42,9 @@ from lip_segmenter import LipMotionSegmenter, frames_to_mp4
 from nlp_corrector import NLPCorrector
 from tts_engine import TTSEngine
 
-logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(name)s  %(message)s")
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger("app")
+seg = LipMotionSegmenter(fps=15, debug=True)  
 
 # ──────────────────────────────────────────────────────────────────
 # App + global state
@@ -243,16 +243,88 @@ async def websocket_endpoint(ws: WebSocket) -> None:
     ]
 
     # Per-client segmenter (created fresh; destroyed on disconnect)
-    segmenter = LipMotionSegmenter(fps=20)
-    streaming  = False   # True while START has been sent and no STOP received
-    frame_seq  = 0       # frame counter for throttling status messages
-    STATUS_EVERY = 5     # send lip status JSON every N frames
+    # segmenter = LipMotionSegmenter(fps=20)
+    # streaming  = False   # True while START has been sent and no STOP received
+    # frame_seq  = 0       # frame counter for throttling status messages
+    # STATUS_EVERY = 5     # send lip status JSON every N frames
+
+    # try:
+    #     while True:
+    #         message = await ws.receive()
+
+    #         # ── Control text message ───────────────────────────────
+    #         if "text" in message:
+    #             try:
+    #                 ctrl = json.loads(message["text"])
+    #             except json.JSONDecodeError:
+    #                 continue
+
+    #             if ctrl.get("type") != "control":
+    #                 continue
+
+    #             action = ctrl.get("action", "")
+
+    #             if action == "start":
+    #                 streaming = True
+    #                 segmenter.reset()
+    #                 frame_seq = 0
+    #                 logger.info("[WS] Client %d: streaming started.", client_id)
+
+    #             elif action == "stop":
+    #                 streaming = False
+    #                 logger.info("[WS] Client %d: streaming stopped.", client_id)
+    #                 # Force-flush whatever is buffered (even without silence timeout)
+    #                 # Only if there are frames worth sending
+    #                 if segmenter._speech_active and len(segmenter._frame_buffer) >= segmenter.min_speech_frames:
+    #                     frames_np, n = segmenter._flush()
+    #                     await _save_and_enqueue(frames_np, n, clip_queue, client_id)
+    #                 segmenter.reset()
+
+    #         # ── Binary JPEG frame ──────────────────────────────────
+    #         elif "bytes" in message:
+    #             if not streaming:
+    #                 continue  # ignore frames when not started
+
+    #             jpeg_bytes = message["bytes"]
+    #             if not jpeg_bytes:
+    #                 continue
+
+    #             frame_seq += 1
+
+    #             # Push frame to segmenter
+    #             result = segmenter.push_frame(jpeg_bytes)
+
+    #             # Send lip motion status to frontend (throttled)
+    #             if frame_seq % STATUS_EVERY == 0:
+    #                 try:
+    #                     await ws.send_text(json.dumps({
+    #                         "type":     "status",
+    #                         "speaking": segmenter.is_speaking,
+    #                         "score":    round(segmenter.last_score, 5),
+    #                     }))
+    #                 except Exception:
+    #                     pass
+
+    #             # Utterance complete!
+    #             if result is not None:
+    #                 frames_np, n = result
+    #                 await _save_and_enqueue(frames_np, n, clip_queue, client_id)
+    #                 # segmenter already reset its internal state after _flush();
+    #                 # call public reset() to reinitialise for next utterance
+    #                 segmenter.reset()
+    #                 logger.info("[WS] Client %d: listening for next utterance.", client_id)
+    # Per-client simple buffer (replaces segmenter for manual mode)
+    
+    # demo purpose
+    frame_buffer = []
+    streaming = False
+    frame_seq = 0
+    STATUS_EVERY = 5
 
     try:
         while True:
             message = await ws.receive()
 
-            # ── Control text message ───────────────────────────────
             if "text" in message:
                 try:
                     ctrl = json.loads(message["text"])
@@ -266,53 +338,44 @@ async def websocket_endpoint(ws: WebSocket) -> None:
 
                 if action == "start":
                     streaming = True
-                    segmenter.reset()
+                    frame_buffer = []
                     frame_seq = 0
-                    logger.info("[WS] Client %d: streaming started.", client_id)
+                    logger.info("[WS] Client %d: recording started.", client_id)
 
                 elif action == "stop":
                     streaming = False
-                    logger.info("[WS] Client %d: streaming stopped.", client_id)
-                    # Force-flush whatever is buffered (even without silence timeout)
-                    # Only if there are frames worth sending
-                    if segmenter._speech_active and len(segmenter._frame_buffer) >= segmenter.min_speech_frames:
-                        frames_np, n = segmenter._flush()
-                        await _save_and_enqueue(frames_np, n, clip_queue, client_id)
-                    segmenter.reset()
+                    logger.info("[WS] Client %d: recording stopped. %d frames buffered.", client_id, len(frame_buffer))
+                    if len(frame_buffer) > 0:
+                        import numpy as np
+                        import cv2
+                        frames_np = []
+                        for jpeg in frame_buffer:
+                            arr = np.frombuffer(jpeg, np.uint8)
+                            frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+                            if frame is not None:
+                                frames_np.append(frame)
+                        if frames_np:
+                            frames_np = np.stack(frames_np)
+                            await _save_and_enqueue(frames_np, len(frames_np), clip_queue, client_id)
+                    frame_buffer = []
 
-            # ── Binary JPEG frame ──────────────────────────────────
             elif "bytes" in message:
                 if not streaming:
-                    continue  # ignore frames when not started
-
-                jpeg_bytes = message["bytes"]
-                if not jpeg_bytes:
                     continue
-
-                frame_seq += 1
-
-                # Push frame to segmenter
-                result = segmenter.push_frame(jpeg_bytes)
-
-                # Send lip motion status to frontend (throttled)
-                if frame_seq % STATUS_EVERY == 0:
-                    try:
-                        await ws.send_text(json.dumps({
-                            "type":     "status",
-                            "speaking": segmenter.is_speaking,
-                            "score":    round(segmenter.last_score, 5),
-                        }))
-                    except Exception:
-                        pass
-
-                # Utterance complete!
-                if result is not None:
-                    frames_np, n = result
-                    await _save_and_enqueue(frames_np, n, clip_queue, client_id)
-                    # segmenter already reset its internal state after _flush();
-                    # call public reset() to reinitialise for next utterance
-                    segmenter.reset()
-                    logger.info("[WS] Client %d: listening for next utterance.", client_id)
+                jpeg_bytes = message["bytes"]
+                if jpeg_bytes:
+                    frame_buffer.append(jpeg_bytes)
+                    frame_seq += 1
+                    # keep UI alive with status ping
+                    if frame_seq % STATUS_EVERY == 0:
+                        try:
+                            await ws.send_text(json.dumps({
+                                "type": "status",
+                                "speaking": True,
+                                "score": 0.01
+                            }))
+                        except Exception:
+                            pass
 
     except WebSocketDisconnect:
         logger.info("[WS] Client %d disconnected.", client_id)
